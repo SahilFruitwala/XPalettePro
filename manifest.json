@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "XPalettePro",
+  "version": "1.0.0",
+  "description": "Change the theme of Twitter/X with beautiful custom colors.",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.twitter.com/*",
+        "*://*.x.com/*",
+        "*://twitter.com/*",
+        "*://x.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "host_permissions": ["*://*.twitter.com/*", "*://*.x.com/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
