@@ -249,43 +249,89 @@ body { scrollbar-color: ${brd} ${bg} !important; }
                 const tag = el.tagName;
 
                 // ---- Background ----
-                const bgColor = cs.backgroundColor;
-                if (bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-                    const lightCheck = isLightBg(bgColor);
-                    if (lightCheck === 'main' || lightCheck === true || BG_TO_MAIN.has(bgColor)) {
-                        el.style.setProperty('background-color', bg, 'important');
-                    } else if (lightCheck === 'hover' || BG_TO_HOVER.has(bgColor)) {
-                        el.style.setProperty('background-color', bgH, 'important');
+                const storedBg = el.dataset.xpBg;
+                if (!storedBg) {
+                    const bgColor = cs.backgroundColor;
+                    if (bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                        const lightCheck = isLightBg(bgColor);
+                        if (lightCheck === 'main' || lightCheck === true || BG_TO_MAIN.has(bgColor)) {
+                            el.dataset.xpBg = 'main';
+                        } else if (lightCheck === 'hover' || BG_TO_HOVER.has(bgColor)) {
+                            el.dataset.xpBg = 'hover';
+                        }
                     }
                 }
 
+                if (el.dataset.xpBg === 'main') {
+                    el.style.setProperty('background-color', bg, 'important');
+                } else if (el.dataset.xpBg === 'hover') {
+                    el.style.setProperty('background-color', bgH, 'important');
+                }
+
                 // ---- Text color ----
-                const textColor = cs.color;
-                if (TEXT_TO_PRIMARY.has(textColor)) {
+                const storedTxt = el.dataset.xpTxt;
+                if (!storedTxt) {
+                    const textColor = cs.color;
+                    if (TEXT_TO_PRIMARY.has(textColor)) {
+                        el.dataset.xpTxt = 'primary';
+                    } else if (TEXT_TO_MUTED.has(textColor)) {
+                        el.dataset.xpTxt = 'muted';
+                    }
+                }
+
+                if (el.dataset.xpTxt === 'primary') {
                     el.style.setProperty('color', txt, 'important');
-                } else if (TEXT_TO_MUTED.has(textColor)) {
+                } else if (el.dataset.xpTxt === 'muted') {
                     el.style.setProperty('color', mut, 'important');
                 }
 
-                // ---- Borders: override ANY visible border that isn't already themed ----
-                const isNotThemed = (c) => c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent' && c !== brd;
-                const bbw = cs.borderBottomWidth;
-                const btw = cs.borderTopWidth;
-                const blw = cs.borderLeftWidth;
-                const brw = cs.borderRightWidth;
+                // ---- Borders ----
+                const storedBrd = el.dataset.xpBrd;
+                if (!storedBrd) {
+                    const isNotThemedDefault = (c) => c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
+                    let hasBorder = false;
+                    if (cs.borderBottomWidth !== '0px' && isNotThemedDefault(cs.borderBottomColor)) hasBorder = true;
+                    if (cs.borderTopWidth !== '0px' && isNotThemedDefault(cs.borderTopColor)) hasBorder = true;
+                    if (cs.borderLeftWidth !== '0px' && isNotThemedDefault(cs.borderLeftColor)) hasBorder = true;
+                    if (cs.borderRightWidth !== '0px' && isNotThemedDefault(cs.borderRightColor)) hasBorder = true;
+                    
+                    if (hasBorder) {
+                        el.dataset.xpBrd = 'true';
+                    }
+                }
 
-                if (bbw !== '0px' && isNotThemed(cs.borderBottomColor)) {
-                    el.style.setProperty('border-bottom-color', brd, 'important');
+                if (el.dataset.xpBrd === 'true') {
+                    if (cs.borderBottomWidth !== '0px') el.style.setProperty('border-bottom-color', brd, 'important');
+                    if (cs.borderTopWidth !== '0px') el.style.setProperty('border-top-color', brd, 'important');
+                    if (cs.borderLeftWidth !== '0px') el.style.setProperty('border-left-color', brd, 'important');
+                    if (cs.borderRightWidth !== '0px') el.style.setProperty('border-right-color', brd, 'important');
                 }
-                if (btw !== '0px' && isNotThemed(cs.borderTopColor)) {
-                    el.style.setProperty('border-top-color', brd, 'important');
-                }
-                if (blw !== '0px' && isNotThemed(cs.borderLeftColor)) {
-                    el.style.setProperty('border-left-color', brd, 'important');
-                }
-                if (brw !== '0px' && isNotThemed(cs.borderRightColor)) {
-                    el.style.setProperty('border-right-color', brd, 'important');
-                }
+            }
+        });
+    }
+
+    function clearAllOverrides() {
+        if (document.body) {
+            document.body.style.removeProperty('background-color');
+            document.body.style.removeProperty('scrollbar-color');
+        }
+        
+        const modifiedElements = document.querySelectorAll('[data-xp-bg], [data-xp-txt], [data-xp-brd]');
+        modifiedElements.forEach(el => {
+            if (el.dataset.xpBg) {
+                el.style.removeProperty('background-color');
+                delete el.dataset.xpBg;
+            }
+            if (el.dataset.xpTxt) {
+                el.style.removeProperty('color');
+                delete el.dataset.xpTxt;
+            }
+            if (el.dataset.xpBrd) {
+                el.style.removeProperty('border-bottom-color');
+                el.style.removeProperty('border-top-color');
+                el.style.removeProperty('border-left-color');
+                el.style.removeProperty('border-right-color');
+                delete el.dataset.xpBrd;
             }
         });
     }
@@ -297,6 +343,7 @@ body { scrollbar-color: ${brd} ${bg} !important; }
         const theme = THEMES[themeId];
         if (!theme || !theme.colors) {
             currentColors = null;
+            clearAllOverrides();
             return;
         }
 
