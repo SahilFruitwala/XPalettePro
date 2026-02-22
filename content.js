@@ -161,8 +161,8 @@ button[data-testid="retweet"] svg { color: inherit !important; fill: inherit !im
     color: ${mut} !important;
 }
 
-/* Force ALL borders site-wide to theme border color */
-* {
+/* Force ALL borders site-wide to theme border color, except Google containers and iframes */
+*:not(iframe):not([data-testid="google_sign_in_container"]):not([data-testid="google_sign_in_container"] *) {
     border-color: ${brd} !important;
 }
 /* Keep accent-colored borders (e.g. active tab) */
@@ -231,8 +231,14 @@ body { scrollbar-color: ${brd} ${bg} !important; }
         const txt = currentColors['--xp-text'];
         const mut = currentColors['--xp-text-muted'];
 
-        // Override body inline style directly
+        // Override body inline style directly (safe backup)
         if (document.body) {
+            if (!document.body.hasAttribute('data-xp-orig-body-bg')) {
+                document.body.setAttribute('data-xp-orig-body-bg', document.body.style.backgroundColor || '');
+            }
+            if (!document.body.hasAttribute('data-xp-orig-body-sc')) {
+                document.body.setAttribute('data-xp-orig-body-sc', document.body.style.scrollbarColor || '');
+            }
             document.body.style.setProperty('background-color', bg, 'important');
         }
 
@@ -245,48 +251,56 @@ body { scrollbar-color: ${brd} ${bg} !important; }
             const elements = [container, ...container.querySelectorAll('*')];
             for (let i = 0; i < elements.length; i++) {
                 const el = elements[i];
+                
+                // Exempt Google sign-in container and iframes entirely from JS mutator
+                if (el.tagName === 'IFRAME' || el.closest('[data-testid="google_sign_in_container"]')) continue;
+
                 const cs = getComputedStyle(el);
                 const tag = el.tagName;
 
                 // ---- Background ----
-                const storedBg = el.dataset.xpBg;
+                const storedBg = el.getAttribute('data-xp-bg');
                 if (!storedBg) {
                     const bgColor = cs.backgroundColor;
                     if (bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
                         const lightCheck = isLightBg(bgColor);
                         if (lightCheck === 'main' || lightCheck === true || BG_TO_MAIN.has(bgColor)) {
                             el.dataset.xpBg = 'main';
+                            el.setAttribute('data-xp-orig-bg', el.style.backgroundColor || '');
                         } else if (lightCheck === 'hover' || BG_TO_HOVER.has(bgColor)) {
                             el.dataset.xpBg = 'hover';
+                            el.setAttribute('data-xp-orig-bg', el.style.backgroundColor || '');
                         }
                     }
                 }
 
-                if (el.dataset.xpBg === 'main') {
+                if (el.getAttribute('data-xp-bg') === 'main') {
                     el.style.setProperty('background-color', bg, 'important');
-                } else if (el.dataset.xpBg === 'hover') {
+                } else if (el.getAttribute('data-xp-bg') === 'hover') {
                     el.style.setProperty('background-color', bgH, 'important');
                 }
 
                 // ---- Text color ----
-                const storedTxt = el.dataset.xpTxt;
+                const storedTxt = el.getAttribute('data-xp-txt');
                 if (!storedTxt) {
                     const textColor = cs.color;
                     if (TEXT_TO_PRIMARY.has(textColor)) {
-                        el.dataset.xpTxt = 'primary';
+                        el.setAttribute('data-xp-txt', 'primary');
+                        el.setAttribute('data-xp-orig-txt', el.style.color || '');
                     } else if (TEXT_TO_MUTED.has(textColor)) {
-                        el.dataset.xpTxt = 'muted';
+                        el.setAttribute('data-xp-txt', 'muted');
+                        el.setAttribute('data-xp-orig-txt', el.style.color || '');
                     }
                 }
 
-                if (el.dataset.xpTxt === 'primary') {
+                if (el.getAttribute('data-xp-txt') === 'primary') {
                     el.style.setProperty('color', txt, 'important');
-                } else if (el.dataset.xpTxt === 'muted') {
+                } else if (el.getAttribute('data-xp-txt') === 'muted') {
                     el.style.setProperty('color', mut, 'important');
                 }
 
                 // ---- Borders ----
-                const storedBrd = el.dataset.xpBrd;
+                const storedBrd = el.getAttribute('data-xp-brd');
                 if (!storedBrd) {
                     const isNotThemedDefault = (c) => c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
                     let hasBorder = false;
@@ -296,11 +310,15 @@ body { scrollbar-color: ${brd} ${bg} !important; }
                     if (cs.borderRightWidth !== '0px' && isNotThemedDefault(cs.borderRightColor)) hasBorder = true;
                     
                     if (hasBorder) {
-                        el.dataset.xpBrd = 'true';
+                        el.setAttribute('data-xp-brd', 'true');
+                        el.setAttribute('data-xp-orig-brcb', el.style.borderBottomColor || '');
+                        el.setAttribute('data-xp-orig-brct', el.style.borderTopColor || '');
+                        el.setAttribute('data-xp-orig-brcl', el.style.borderLeftColor || '');
+                        el.setAttribute('data-xp-orig-brcr', el.style.borderRightColor || '');
                     }
                 }
 
-                if (el.dataset.xpBrd === 'true') {
+                if (el.getAttribute('data-xp-brd') === 'true') {
                     if (cs.borderBottomWidth !== '0px') el.style.setProperty('border-bottom-color', brd, 'important');
                     if (cs.borderTopWidth !== '0px') el.style.setProperty('border-top-color', brd, 'important');
                     if (cs.borderLeftWidth !== '0px') el.style.setProperty('border-left-color', brd, 'important');
@@ -312,26 +330,52 @@ body { scrollbar-color: ${brd} ${bg} !important; }
 
     function clearAllOverrides() {
         if (document.body) {
-            document.body.style.removeProperty('background-color');
-            document.body.style.removeProperty('scrollbar-color');
+            if (document.body.hasAttribute('data-xp-orig-body-bg')) {
+                const orig = document.body.getAttribute('data-xp-orig-body-bg');
+                if (orig) document.body.style.setProperty('background-color', orig);
+                else document.body.style.removeProperty('background-color');
+                document.body.removeAttribute('data-xp-orig-body-bg');
+            }
+            if (document.body.hasAttribute('data-xp-orig-body-sc')) {
+                const orig = document.body.getAttribute('data-xp-orig-body-sc');
+                if (orig) document.body.style.setProperty('scrollbar-color', orig);
+                else document.body.style.removeProperty('scrollbar-color');
+                document.body.removeAttribute('data-xp-orig-body-sc');
+            }
         }
         
         const modifiedElements = document.querySelectorAll('[data-xp-bg], [data-xp-txt], [data-xp-brd]');
         modifiedElements.forEach(el => {
-            if (el.dataset.xpBg) {
-                el.style.removeProperty('background-color');
-                delete el.dataset.xpBg;
+            if (el.hasAttribute('data-xp-bg')) {
+                const orig = el.getAttribute('data-xp-orig-bg');
+                if (orig) el.style.setProperty('background-color', orig);
+                else el.style.removeProperty('background-color');
+                el.removeAttribute('data-xp-orig-bg');
+                el.removeAttribute('data-xp-bg');
             }
-            if (el.dataset.xpTxt) {
-                el.style.removeProperty('color');
-                delete el.dataset.xpTxt;
+            if (el.hasAttribute('data-xp-txt')) {
+                const orig = el.getAttribute('data-xp-orig-txt');
+                if (orig) el.style.setProperty('color', orig);
+                else el.style.removeProperty('color');
+                el.removeAttribute('data-xp-orig-txt');
+                el.removeAttribute('data-xp-txt');
             }
-            if (el.dataset.xpBrd) {
-                el.style.removeProperty('border-bottom-color');
-                el.style.removeProperty('border-top-color');
-                el.style.removeProperty('border-left-color');
-                el.style.removeProperty('border-right-color');
-                delete el.dataset.xpBrd;
+            if (el.hasAttribute('data-xp-brd')) {
+                const origB = el.getAttribute('data-xp-orig-brcb');
+                const origT = el.getAttribute('data-xp-orig-brct');
+                const origL = el.getAttribute('data-xp-orig-brcl');
+                const origR = el.getAttribute('data-xp-orig-brcr');
+                
+                if (origB) el.style.setProperty('border-bottom-color', origB); else el.style.removeProperty('border-bottom-color');
+                if (origT) el.style.setProperty('border-top-color', origT); else el.style.removeProperty('border-top-color');
+                if (origL) el.style.setProperty('border-left-color', origL); else el.style.removeProperty('border-left-color');
+                if (origR) el.style.setProperty('border-right-color', origR); else el.style.removeProperty('border-right-color');
+                
+                el.removeAttribute('data-xp-orig-brcb');
+                el.removeAttribute('data-xp-orig-brct');
+                el.removeAttribute('data-xp-orig-brcl');
+                el.removeAttribute('data-xp-orig-brcr');
+                el.removeAttribute('data-xp-brd');
             }
         });
     }
