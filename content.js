@@ -224,6 +224,11 @@ a[role="link"] span[style*="color: rgb(29, 161, 242)"] { color: ${acc} !importan
 div[role="tablist"] div[style*="background-color: rgb(29, 155, 240)"],
 div[role="tablist"] div[style*="background-color: rgb(29, 161, 242)"] { background-color: ${acc} !important; }
 
+/* Follow button — theme accent */
+[data-testid$="-follow"] { background-color: ${acc} !important; border-color: ${acc} !important; }
+[data-testid$="-follow"] span { color: ${bg} !important; }
+[data-testid$="-unfollow"] { border-color: ${brd} !important; }
+
 /* Dialogs */
 div[role="dialog"] > div { background-color: ${bg} !important; }
 div[data-testid="HoverCard"], div[data-testid="HoverCard"] > div { background-color: ${bg} !important; }
