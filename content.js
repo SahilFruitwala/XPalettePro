@@ -229,6 +229,14 @@ div[role="tablist"] div[style*="background-color: rgb(29, 161, 242)"] { backgrou
 [data-testid$="-follow"] span { color: ${bg} !important; }
 [data-testid$="-unfollow"] { border-color: ${brd} !important; }
 
+/* Hover states */
+a[role="link"]:hover span { color: ${acc} !important; }
+article[data-testid="tweet"]:hover { background-color: ${bgH} !important; }
+div[data-testid="trend"]:hover { background-color: ${bgH} !important; }
+div[data-testid="UserCell"]:hover { background-color: ${bgH} !important; }
+header[role="banner"] a[role="link"]:hover div { background-color: ${bgH} !important; }
+nav[role="navigation"] a[role="link"]:hover { background-color: ${bgH} !important; }
+
 /* Dialogs */
 div[role="dialog"] > div { background-color: ${bg} !important; }
 div[data-testid="HoverCard"], div[data-testid="HoverCard"] > div { background-color: ${bg} !important; }
