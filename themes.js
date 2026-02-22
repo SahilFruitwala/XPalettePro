@@ -57,5 +57,27 @@ window.XPaletteThemes = {
             "--xp-text-muted": "#a6adc8",
             "--xp-accent": "#cba6f7"
         }
+    },
+    "latte": {
+        name: "Catppuccin Latte (Light)",
+        colors: {
+            "--xp-bg": "#eff1f5",
+            "--xp-bg-hover": "#e6e9ef",
+            "--xp-border": "rgba(0, 0, 0, 0.08)",
+            "--xp-text": "#4c4f69",
+            "--xp-text-muted": "#8c8fa1",
+            "--xp-accent": "#8839ef"
+        }
+    },
+    "github-light": {
+        name: "GitHub Light",
+        colors: {
+            "--xp-bg": "#ffffff",
+            "--xp-bg-hover": "#f6f8fa",
+            "--xp-border": "rgba(0, 0, 0, 0.1)",
+            "--xp-text": "#24292f",
+            "--xp-text-muted": "#57606a",
+            "--xp-accent": "#0969da"
+        }
     }
 };

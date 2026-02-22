@@ -58,6 +58,28 @@
                 "--xp-text-muted": "#a6adc8",
                 "--xp-accent": "#cba6f7"
             }
+        },
+        "latte": {
+            name: "Catppuccin Latte (Light)",
+            colors: {
+                "--xp-bg": "#eff1f5",
+                "--xp-bg-hover": "#e6e9ef",
+                "--xp-border": "rgba(0, 0, 0, 0.08)",
+                "--xp-text": "#4c4f69",
+                "--xp-text-muted": "#8c8fa1",
+                "--xp-accent": "#8839ef"
+            }
+        },
+        "github-light": {
+            name: "GitHub Light",
+            colors: {
+                "--xp-bg": "#ffffff",
+                "--xp-bg-hover": "#f6f8fa",
+                "--xp-border": "rgba(0, 0, 0, 0.1)",
+                "--xp-text": "#24292f",
+                "--xp-text-muted": "#57606a",
+                "--xp-accent": "#0969da"
+            }
         }
     };
 
@@ -75,7 +97,7 @@
         'rgb(22, 24, 28)', 'rgb(32, 35, 39)', 'rgb(39, 44, 48)', 'rgb(26, 29, 33)'
     ]);
     const TEXT_TO_PRIMARY = new Set([
-        'rgb(15, 20, 25)', 'rgb(0, 0, 0)',
+        'rgb(15, 20, 25)', 'rgb(0, 0, 0)', 'rgb(255, 255, 255)',
         'rgb(231, 233, 234)', 'rgb(247, 249, 249)', 'rgb(239, 243, 244)', 'rgb(215, 218, 220)'
     ]);
     const TEXT_TO_MUTED = new Set([
@@ -108,7 +130,7 @@
     let scanTimer = null;
     let observer = null;
 
-    function buildCSS(c) {
+    function buildCSS(c, themeMeta) {
         const bg = c['--xp-bg'];
         const bgH = c['--xp-bg-hover'];
         const brd = c['--xp-border'];
@@ -116,48 +138,42 @@
         const mut = c['--xp-text-muted'];
         const acc = c['--xp-accent'];
 
+        const scheme = (themeMeta && themeMeta.name && themeMeta.name.toLowerCase().includes('light')) ? 'light' : 'dark';
+
         return `
 html, body, body[style] {
     background-color: ${bg} !important;
     color: ${txt} !important;
-    color-scheme: dark !important;
+    color-scheme: ${scheme} !important;
 }
 
 /* Inline-style bg overrides */
-[style*="background-color: rgb(255, 255, 255)"],
-[style*="background-color: rgb(247, 249, 249)"],
-[style*="background-color: rgba(255, 255, 255"],
-[style*="background-color: rgba(247, 249, 249"],
-[style*="background-color: rgb(0, 0, 0)"],
-[style*="background-color: rgb(15, 20, 25)"],
-[style*="background-color: rgb(21, 32, 43)"],
-[style*="background-color: rgba(0, 0, 0"] {
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(255, 255, 255)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(247, 249, 249)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(0, 0, 0)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(15, 20, 25)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(21, 32, 43)"] {
     background-color: ${bg} !important;
 }
-[style*="background-color: rgb(239, 243, 244)"],
-[style*="background-color: rgb(232, 236, 238)"],
-[style*="background-color: rgb(32, 35, 39)"],
-[style*="background-color: rgb(39, 44, 48)"] {
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(239, 243, 244)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(232, 236, 238)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(32, 35, 39)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(39, 44, 48)"] {
     background-color: ${bgH} !important;
 }
 
-/* SVG icon colors */
-svg { color: ${txt} !important; fill: ${txt} !important; }
-/* Keep colored interactive SVGs (like, retweet, etc) */
-button[data-testid="like"] svg,
-button[data-testid="unlike"] svg { color: inherit !important; fill: inherit !important; }
-button[data-testid="retweet"] svg { color: inherit !important; fill: inherit !important; }
+
 
 /* Inline-style text overrides */
-[style*="color: rgb(15, 20, 25)"],
-[style*="color: rgb(231, 233, 234)"],
-[style*="color: rgb(247, 249, 249)"],
-[style*="color: rgb(239, 243, 244)"] {
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(15, 20, 25)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(231, 233, 234)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(247, 249, 249)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(239, 243, 244)"] {
     color: ${txt} !important;
 }
-[style*="color: rgb(83, 100, 113)"],
-[style*="color: rgb(113, 118, 123)"],
-[style*="color: rgb(139, 152, 165)"] {
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(83, 100, 113)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(113, 118, 123)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(139, 152, 165)"] {
     color: ${mut} !important;
 }
 
@@ -252,8 +268,9 @@ body { scrollbar-color: ${brd} ${bg} !important; }
             for (let i = 0; i < elements.length; i++) {
                 const el = elements[i];
                 
-                // Exempt Google sign-in container and iframes entirely from JS mutator
+                // Exempt Google sign-in container and specific native buttons (Follow)
                 if (el.tagName === 'IFRAME' || el.closest('[data-testid="google_sign_in_container"]')) continue;
+                if (el.closest('[data-testid$="-follow"]') || el.closest('[data-testid$="-unfollow"]')) continue;
 
                 const cs = getComputedStyle(el);
                 const tag = el.tagName;
@@ -396,7 +413,7 @@ body { scrollbar-color: ${brd} ${bg} !important; }
         // Inject CSS
         const styleEl = document.createElement('style');
         styleEl.id = STYLE_ID;
-        styleEl.textContent = buildCSS(theme.colors);
+        styleEl.textContent = buildCSS(theme.colors, theme);
         document.head.appendChild(styleEl);
 
         // Run JS scan
