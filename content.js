@@ -174,6 +174,7 @@ html, body, #react-root, #layers {
 
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(15, 20, 25)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(15, 20, 26)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(0, 0, 0)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(231, 233, 234)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(247, 249, 249)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(239, 243, 244)"] {
@@ -261,6 +262,28 @@ div[data-testid="toolBar"] button svg {
   fill: currentColor !important;
 }
 
+/* Normalize X icon glyph rendering in dark themes */
+header[role="banner"] svg.r-yyyyoo,
+nav[role="navigation"] svg.r-yyyyoo,
+main svg.r-yyyyoo,
+aside[role="complementary"] svg.r-yyyyoo,
+div[role="menu"] svg.r-yyyyoo,
+div[role="dialog"] svg.r-yyyyoo {
+  color: inherit !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+header[role="banner"] svg.r-yyyyoo path,
+nav[role="navigation"] svg.r-yyyyoo path,
+main svg.r-yyyyoo path,
+aside[role="complementary"] svg.r-yyyyoo path,
+div[role="menu"] svg.r-yyyyoo path,
+div[role="dialog"] svg.r-yyyyoo path {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
 section[aria-labelledby],
 div[data-testid="cellInnerDiv"],
 article[data-testid="tweet"],
@@ -314,7 +337,8 @@ div[data-testid="primaryColumn"] div[style*="-webkit-backdrop-filter"] {
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
-article[data-testid="tweet"]:hover,
+div[data-testid="cellInnerDiv"]:hover,
+div[data-testid="cellInnerDiv"]:hover > div,
 div[data-testid="UserCell"]:hover,
 div[data-testid="trend"]:hover,
 [role="menuitem"]:hover,
@@ -326,6 +350,11 @@ nav[role="navigation"] a[role="link"]:focus-visible,
 [role="button"]:hover:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]),
 [role="button"]:focus-visible:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]) {
   background-color: var(--xp-interactive-hover) !important;
+}
+
+/* Avoid side-strip artifact from hovering the outer tweet wrapper */
+article[data-testid="tweet"]:hover {
+  background-color: transparent !important;
 }
 
 input,
