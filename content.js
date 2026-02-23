@@ -130,6 +130,32 @@
     let scanTimer = null;
     let observer = null;
 
+    function hexToRgb(hex) {
+        if (typeof hex !== 'string') return null;
+        const value = hex.trim().replace('#', '');
+        if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(value)) return null;
+        const full = value.length === 3
+            ? value.split('').map(ch => ch + ch).join('')
+            : value;
+        const intVal = parseInt(full, 16);
+        return {
+            r: (intVal >> 16) & 255,
+            g: (intVal >> 8) & 255,
+            b: intVal & 255
+        };
+    }
+
+    function blendHex(baseHex, accentHex, amount) {
+        const base = hexToRgb(baseHex);
+        const accent = hexToRgb(accentHex);
+        if (!base || !accent) return null;
+        const t = Math.max(0, Math.min(1, amount));
+        const r = Math.round(base.r + (accent.r - base.r) * t);
+        const g = Math.round(base.g + (accent.g - base.g) * t);
+        const b = Math.round(base.b + (accent.b - base.b) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
     function buildCSS(c, themeMeta) {
         const bg = c['--xp-bg'];
         const bgH = c['--xp-bg-hover'];
@@ -139,6 +165,7 @@
         const acc = c['--xp-accent'];
 
         const scheme = (themeMeta && themeMeta.name && themeMeta.name.toLowerCase().includes('light')) ? 'light' : 'dark';
+        const interactiveHover = blendHex(bgH, acc, scheme === 'light' ? 0.12 : 0.18) || bgH;
 
         return `
 html, body, body[style] {
@@ -231,17 +258,53 @@ div[role="tablist"] div[style*="background-color: rgb(29, 161, 242)"] { backgrou
 
 /* Hover states */
 a[role="link"]:hover span { color: ${acc} !important; }
-article[data-testid="tweet"]:hover { background-color: ${bgH} !important; }
-div[data-testid="trend"]:hover { background-color: ${bgH} !important; }
-div[data-testid="UserCell"]:hover { background-color: ${bgH} !important; }
-header[role="banner"] a[role="link"]:hover div { background-color: ${bgH} !important; }
-nav[role="navigation"] a[role="link"]:hover { background-color: ${bgH} !important; }
+article[data-testid="tweet"]:hover { background-color: ${interactiveHover} !important; }
+div[data-testid="trend"]:hover { background-color: ${interactiveHover} !important; }
+div[data-testid="UserCell"]:hover { background-color: ${interactiveHover} !important; }
+header[role="banner"] a[role="link"]:hover div { background-color: ${interactiveHover} !important; }
+nav[role="navigation"] a[role="link"]:hover,
+nav[role="navigation"] a[role="link"]:focus-visible { background-color: ${interactiveHover} !important; }
+nav[role="navigation"] a[role="link"] span,
+nav[role="navigation"] a[role="link"]:hover span,
+nav[role="navigation"] a[role="link"]:focus-visible span {
+    color: ${txt} !important;
+}
+[role="menuitem"]:hover,
+[role="menuitem"]:focus-visible,
+[role="option"]:hover,
+[role="option"]:focus-visible,
+[role="button"]:hover:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]),
+[role="button"]:focus-visible:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]) {
+    background-color: ${interactiveHover} !important;
+}
 
 /* Dialogs */
 div[role="dialog"] > div { background-color: ${bg} !important; }
 div[data-testid="HoverCard"], div[data-testid="HoverCard"] > div { background-color: ${bg} !important; }
 nav[role="navigation"] { background-color: ${bg} !important; }
 div[data-testid="DMDrawer"] { background-color: ${bg} !important; }
+
+/* Overlay menus (e.g. "More") */
+div[data-testid="Dropdown"],
+div[data-testid="Dropdown"] > div,
+div[data-testid="Dropdown"] [role="menu"],
+div[data-testid="Dropdown"] [role="menu"] > div,
+div[role="menu"] {
+    background-color: ${bg} !important;
+    border-color: ${brd} !important;
+}
+div[data-testid="Dropdown"] [role="menuitem"],
+div[data-testid="Dropdown"] [role="menuitem"] span,
+div[role="menu"] [role="menuitem"],
+div[role="menu"] [role="menuitem"] span {
+    color: ${txt} !important;
+}
+div[data-testid="Dropdown"] [role="menuitem"]:hover,
+div[data-testid="Dropdown"] [role="menuitem"]:focus-visible,
+div[role="menu"] [role="menuitem"]:hover,
+div[role="menu"] [role="menuitem"]:focus-visible {
+    background-color: ${interactiveHover} !important;
+}
 
 /* Scrollbar */
 body { scrollbar-color: ${brd} ${bg} !important; }
@@ -273,7 +336,12 @@ body { scrollbar-color: ${brd} ${bg} !important; }
 
         // Scan ALL elements in the main content areas
         const containers = document.querySelectorAll(
-            'div[data-testid="primaryColumn"], div[data-testid="sidebarColumn"], header[role="banner"]'
+            'div[data-testid="primaryColumn"], ' +
+            'div[data-testid="sidebarColumn"], ' +
+            'header[role="banner"], ' +
+            'div[role="dialog"], ' +
+            'div[data-testid="Dropdown"], ' +
+            'div[role="menu"]'
         );
 
         containers.forEach(container => {
@@ -305,9 +373,14 @@ body { scrollbar-color: ${brd} ${bg} !important; }
                 }
 
                 if (el.getAttribute('data-xp-bg') === 'main') {
-                    el.style.setProperty('background-color', bg, 'important');
+                    // Let interactive controls keep dynamic hover states via CSS.
+                    if (!el.matches('a[role="link"], [role="menuitem"], [role="button"], [role="option"], button')) {
+                        el.style.setProperty('background-color', bg, 'important');
+                    }
                 } else if (el.getAttribute('data-xp-bg') === 'hover') {
-                    el.style.setProperty('background-color', bgH, 'important');
+                    if (!el.matches('a[role="link"], [role="menuitem"], [role="button"], [role="option"], button')) {
+                        el.style.setProperty('background-color', bgH, 'important');
+                    }
                 }
 
                 // ---- Text color ----
