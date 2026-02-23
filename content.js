@@ -414,6 +414,52 @@ form[role="search"] div[style*="background-color"] {
   border-color: var(--xp-border) !important;
 }
 
+/* Search box + magnifier icon (default and focused states) */
+form[role="search"] [data-testid="SearchBox_Search_Input_label"] {
+  background-color: var(--xp-bg-hover) !important;
+  border-color: var(--xp-border) !important;
+  color: var(--xp-text) !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+}
+
+form[role="search"] [data-testid="SearchBox_Search_Input_label"] svg,
+form[role="search"] [data-testid="SearchBox_Search_Input_label"] path {
+  color: var(--xp-text-muted) !important;
+  fill: currentColor !important;
+}
+
+form[role="search"] [data-testid="SearchBox_Search_Input"] {
+  color: var(--xp-text) !important;
+  caret-color: var(--xp-accent) !important;
+}
+
+form[role="search"] [data-testid="SearchBox_Search_Input"]::placeholder {
+  color: var(--xp-text-muted) !important;
+}
+
+form[role="search"]:focus-within [data-testid="SearchBox_Search_Input_label"] {
+  background-color: var(--xp-bg) !important;
+  border-color: var(--xp-accent) !important;
+  box-shadow: inset 0 0 0 1px var(--xp-accent) !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+}
+
+form[role="search"]:focus-within [data-testid="SearchBox_Search_Input_label"] svg,
+form[role="search"]:focus-within [data-testid="SearchBox_Search_Input_label"] path {
+  color: var(--xp-accent) !important;
+  fill: currentColor !important;
+}
+
+/* Keep search dropdown corners intact when themed classes are applied */
+form[role="search"] [id^="typeaheadDropdown-"],
+form[role="search"] [id^="typeaheadDropdown-"] > div,
+form[role="search"] [data-testid="typeaheadEmptySearch"] {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
 span[data-testid="app-text-transition-container"],
 span[data-testid="app-text-transition-container"] span {
   color: var(--xp-text-muted) !important;
@@ -455,6 +501,12 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
   border-top-color: var(--xp-border) !important;
   border-left-color: var(--xp-border) !important;
   border-right-color: var(--xp-border) !important;
+}
+
+/* Preserve rounded corners on nested themed layers */
+:where(.xp-bg-main, .xp-bg-hover):not([style*="border-radius"]) {
+  border-radius: inherit;
+  background-clip: padding-box;
 }
 
 /* Keep primary Post CTAs on accent even if scanner classifies them */
