@@ -59,7 +59,14 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.set({ xp_theme: themeId }, () => {
       // Send message to active tabs
       chrome.tabs.query(
-        { url: ["*://*.twitter.com/*", "*://*.x.com/*"] },
+        {
+          url: [
+            "*://*.twitter.com/*",
+            "*://twitter.com/*",
+            "*://*.x.com/*",
+            "*://x.com/*",
+          ],
+        },
         (tabs) => {
           for (const tab of tabs) {
             chrome.tabs.sendMessage(tab.id, {

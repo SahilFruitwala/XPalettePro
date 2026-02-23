@@ -32,6 +32,7 @@
 
   const TEXT_TO_PRIMARY = new Set([
     "rgb(15, 20, 25)",
+    "rgb(15, 20, 26)",
     "rgb(0, 0, 0)",
     "rgb(255, 255, 255)",
     "rgb(231, 233, 234)",
@@ -76,6 +77,7 @@
   let rafId = null;
   let currentThemeId = "default";
   let currentThemeVersion = "";
+  let currentColors = null;
   let nodeQueue = new Set();
 
   function hexToRgb(hex) {
@@ -100,6 +102,12 @@
     const g = Math.round(base.g + (accent.g - base.g) * t);
     const b = Math.round(base.b + (accent.b - base.b) * t);
     return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function hexToRgbString(hex) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return null;
+    return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
   }
 
   function isLightColor(rgbString) {
@@ -146,12 +154,14 @@ html, body, #react-root, #layers {
   color-scheme: var(--xp-scheme) !important;
 }
 
-/* Inline style surfaces from X runtime */
+/* Inline style surfaces from X runtime — main background */
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(255, 255, 255)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(247, 249, 249)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(0, 0, 0)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(15, 20, 25)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(21, 32, 43)"] {
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(21, 32, 43)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(29, 155, 240)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(29, 161, 242)"] {
   background-color: var(--xp-bg) !important;
 }
 
@@ -163,6 +173,7 @@ html, body, #react-root, #layers {
 }
 
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(15, 20, 25)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(15, 20, 26)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(231, 233, 234)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(247, 249, 249)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(239, 243, 244)"] {
@@ -184,7 +195,6 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--xp-border); border-radius: 4px; }
 
 header[role="banner"],
-nav[role="navigation"],
 main,
 aside[role="complementary"],
 div[data-testid="primaryColumn"],
@@ -203,9 +213,52 @@ div[data-testid="confirmationSheetDialog"] > div {
 }
 
 nav[role="navigation"] a[role="link"],
-nav[role="navigation"] a[role="link"] span,
-nav[role="navigation"] a[role="link"] svg {
+[data-testid^="AppTabBar"] a[role="link"],
+[data-testid^="AppTabBar"] a[role="link"] span,
+[data-testid^="AppTabBar"] a[role="link"] svg {
   color: var(--xp-text) !important;
+}
+
+/* Live module and similar right-rail placements */
+div[data-testid="placementTracking"],
+div[data-testid="placementTracking"] > button,
+div[data-testid="placementTracking"] > button > div,
+div[data-testid="placementTracking"] > button > div > div {
+  background-color: var(--xp-bg) !important;
+  border-color: var(--xp-border) !important;
+}
+
+/* Composer surface */
+div[data-testid="primaryColumn"] div:has(> div > div[data-testid="tweetTextarea_0_label"]),
+div[data-testid="primaryColumn"] div:has(> div[data-testid="tweetTextarea_0_label"]) {
+  background-color: var(--xp-bg) !important;
+  border-color: var(--xp-border) !important;
+}
+
+div[data-testid="tweetTextarea_0_label"],
+div[data-testid="tweetTextarea_0_label"] * {
+  color: var(--xp-text) !important;
+}
+
+.public-DraftEditorPlaceholder-inner {
+  color: var(--xp-text-muted) !important;
+}
+
+/* Keep compose action icons on accent; don't override side nav icons */
+div[data-testid="toolBar"] div[data-testid="ScrollSnap-List"] button,
+div[data-testid="toolBar"] div[data-testid="ScrollSnap-List"] button svg,
+div[data-testid="toolBar"] div[data-testid="ScrollSnap-List"] button [dir="ltr"] {
+  color: var(--xp-accent) !important;
+}
+
+div[data-testid="toolBar"] button svg {
+  color: var(--xp-accent) !important;
+  fill: currentColor !important;
+}
+
+[data-testid^="AppTabBar"] svg {
+  color: var(--xp-text) !important;
+  fill: currentColor !important;
 }
 
 section[aria-labelledby],
@@ -217,6 +270,48 @@ div[data-testid="trend"],
 div[role="listitem"] {
   background-color: var(--xp-bg) !important;
   border-color: var(--xp-border) !important;
+}
+
+/* Sidebar signup/login promo boxes */
+div[data-testid="sidebarColumn"] aside,
+div[data-testid="sidebarColumn"] aside > div,
+div[data-testid="sidebarColumn"] section,
+div[data-testid="sidebarColumn"] section > div {
+  background-color: var(--xp-bg-hover) !important;
+  border-color: var(--xp-border) !important;
+  color: var(--xp-text) !important;
+}
+
+/* "Don't miss" / BottomBar promo banner */
+div[data-testid="BottomBar"],
+div[data-testid="BottomBar"] > div {
+  background-color: var(--xp-bg) !important;
+  color: var(--xp-text) !important;
+  border-top: 1px solid var(--xp-border) !important;
+}
+
+/* "Don't miss" / promo banners with X blue inline background */
+div[style*="background-color: rgb(29, 155, 240)"],
+div[style*="background-color: rgb(29, 161, 242)"],
+div[style*="background: rgb(29, 155, 240)"] {
+  background-color: var(--xp-bg-hover) !important;
+}
+
+/* Sticky profile/search header (has backdrop-filter blur) */
+div[data-testid="primaryColumn"] div[style*="backdrop-filter"],
+div[data-testid="primaryColumn"] div[style*="-webkit-backdrop-filter"] {
+  background-color: color-mix(in srgb, var(--xp-bg) 85%, transparent) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom-color: var(--xp-border) !important;
+}
+
+/* Fallback: any element computed as rgba(255,255,255,0.85) via class (sticky header) */
+[class*="r-1h3ijdo"],
+[class*="r-1e5uvyk"] {
+  background-color: color-mix(in srgb, var(--xp-bg) 85%, transparent) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
 
 article[data-testid="tweet"]:hover,
@@ -319,12 +414,13 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     if (el.matches("iframe, canvas, video, img, svg, path")) return true;
     if (el.closest('[data-testid="google_sign_in_container"]')) return true;
     if (el.closest('[data-testid="videoComponent"], [data-testid="card.wrapper"]')) return true;
+    if (el.closest('[data-testid^="UserAvatar-Container"], [data-testid*="UserAvatar"]')) return true;
     return false;
   }
 
   function hasStyleHints(el) {
-    const inline = el.getAttribute("style");
-    if (inline && /(background|color|border)/i.test(inline)) return true;
+    // Any inline style at all is worth inspecting
+    if (el.hasAttribute("style")) return true;
 
     const role = el.getAttribute("role");
     if (role && ROLE_HINTS.has(role)) return true;
@@ -336,12 +432,47 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
       }
     }
 
+    // X often paints via utility classes instead of inline style.
+    const className = typeof el.className === "string" ? el.className : "";
+    if (
+      className.includes("css-175oi2r") &&
+      el.closest(
+        'div[data-testid="primaryColumn"], ' +
+          'div[data-testid="sidebarColumn"], ' +
+          'div[data-testid="placementTracking"], ' +
+          'div[data-testid="toolBar"], ' +
+          'div[role="dialog"], ' +
+          'div[role="menu"]'
+      )
+    ) {
+      return true;
+    }
+
+    // Structural tags that commonly carry background
+    const tag = el.tagName;
+    if (tag === "SECTION" || tag === "ASIDE" || tag === "HEADER" || tag === "NAV" || tag === "MAIN" || tag === "FOOTER") return true;
+
     return false;
   }
 
   function classifyBackground(el, cs) {
     const bg = cs.backgroundColor;
+    el.classList.remove("xp-bg-main", "xp-bg-hover");
     if (bg === "transparent" || bg === "rgba(0, 0, 0, 0)") return;
+    if (cs.backgroundImage && cs.backgroundImage !== "none") return;
+
+    if (currentColors) {
+      const currentBg = hexToRgbString(currentColors["--xp-bg"]);
+      const currentBgHover = hexToRgbString(currentColors["--xp-bg-hover"]);
+      if (currentBg && bg === currentBg) {
+        el.classList.add("xp-bg-main");
+        return;
+      }
+      if (currentBgHover && bg === currentBgHover) {
+        el.classList.add("xp-bg-hover");
+        return;
+      }
+    }
 
     if (BG_TO_MAIN.has(bg)) {
       el.classList.add("xp-bg-main");
@@ -372,6 +503,20 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
 
   function classifyText(el, cs) {
     const color = cs.color;
+    el.classList.remove("xp-txt-primary", "xp-txt-muted");
+
+    if (currentColors) {
+      const currentText = hexToRgbString(currentColors["--xp-text"]);
+      const currentMuted = hexToRgbString(currentColors["--xp-text-muted"]);
+      if (currentText && color === currentText) {
+        el.classList.add("xp-txt-primary");
+        return;
+      }
+      if (currentMuted && color === currentMuted) {
+        el.classList.add("xp-txt-muted");
+        return;
+      }
+    }
 
     if (TEXT_TO_PRIMARY.has(color)) {
       el.classList.add("xp-txt-primary");
@@ -409,6 +554,7 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     }
 
     if (!hasStyleHints(el)) {
+      el.classList.remove("xp-bg-main", "xp-bg-hover", "xp-txt-primary", "xp-txt-muted", "xp-brd");
       el.dataset.xpVer = currentThemeVersion;
       return;
     }
@@ -551,6 +697,7 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     if (!theme || !theme.colors) {
       currentThemeId = "default";
       currentThemeVersion = "";
+      currentColors = null;
       stopObserver();
       removeThemeStyles();
       clearThemedClasses();
@@ -559,6 +706,7 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
 
     currentThemeId = themeId;
     currentThemeVersion = `${themeId}:${Date.now()}`;
+    currentColors = theme.colors;
 
     ensureRulesStyle();
     setVarsStyle(theme);
