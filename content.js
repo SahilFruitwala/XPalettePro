@@ -110,6 +110,21 @@
     return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
   }
 
+  function srgbToLinear(channel) {
+    const c = channel / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }
+
+  function relativeLuminance(rgb) {
+    return 0.2126 * srgbToLinear(rgb.r) + 0.7152 * srgbToLinear(rgb.g) + 0.0722 * srgbToLinear(rgb.b);
+  }
+
+  function contrastRatio(l1, l2) {
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
   function isLightColor(rgbString) {
     const m = rgbString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
     if (!m) return false;
@@ -131,8 +146,14 @@
     const c = themeMeta.colors;
     const scheme = detectScheme(themeMeta, c);
     const hover = blendHex(c["--xp-bg-hover"], c["--xp-accent"], scheme === "light" ? 0.12 : 0.18) || c["--xp-bg-hover"];
-    const accentRgb = hexToRgbString(c["--xp-accent"]);
-    const onAccent = accentRgb && isLightColor(accentRgb) ? "#111111" : "#ffffff";
+    const accent = hexToRgb(c["--xp-accent"]);
+    let onAccent = "#ffffff";
+    if (accent) {
+      const lAccent = relativeLuminance(accent);
+      const whiteContrast = contrastRatio(lAccent, 1);
+      const blackContrast = contrastRatio(lAccent, 0);
+      onAccent = blackContrast > whiteContrast ? "#111111" : "#ffffff";
+    }
 
     return `
 :root {
@@ -158,13 +179,13 @@ html, body, #react-root, #layers {
 }
 
 /* Inline style surfaces from X runtime — main background */
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(255, 255, 255)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(247, 249, 249)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(0, 0, 0)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(15, 20, 25)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(21, 32, 43)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(29, 155, 240)"],
-*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(29, 161, 242)"] {
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(255, 255, 255)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(247, 249, 249)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(0, 0, 0)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(15, 20, 25)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(21, 32, 43)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(29, 155, 240)"],
+*:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]):not([data-testid="SideNav_NewTweet_Button"]):not([data-testid="tweetButtonInline"])[style*="background-color: rgb(29, 161, 242)"] {
   background-color: var(--xp-bg) !important;
 }
 
@@ -548,11 +569,24 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
 [data-testid="tweetButtonInline"].xp-bg-main {
   background-color: var(--xp-accent) !important;
   border-color: var(--xp-accent) !important;
+  opacity: 1 !important;
 }
 
 [data-testid="SideNav_NewTweet_Button"] *,
 [data-testid="tweetButtonInline"] * {
   color: var(--xp-on-accent) !important;
+}
+
+[data-testid="SideNav_NewTweet_Button"] [dir="ltr"],
+[data-testid="SideNav_NewTweet_Button"] span,
+[data-testid="SideNav_NewTweet_Button"] svg,
+[data-testid="SideNav_NewTweet_Button"] path,
+[data-testid="tweetButtonInline"] [dir="ltr"],
+[data-testid="tweetButtonInline"] span,
+[data-testid="tweetButtonInline"] svg,
+[data-testid="tweetButtonInline"] path {
+  color: var(--xp-on-accent) !important;
+  fill: currentColor !important;
 }
 `;
   }
@@ -589,6 +623,7 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     if (el.closest('[data-testid="google_sign_in_container"]')) return true;
     if (el.closest('[data-testid="videoComponent"], [data-testid="card.wrapper"]')) return true;
     if (el.closest('[data-testid^="UserAvatar-Container"], [data-testid*="UserAvatar"]')) return true;
+    if (el.closest('[data-testid="SideNav_NewTweet_Button"], [data-testid="tweetButtonInline"]')) return true;
     return false;
   }
 
@@ -720,7 +755,31 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     }
   }
 
+  function applyPostCtaStyles(el) {
+    if (!currentColors) return false;
+    if (!el.matches('[data-testid="SideNav_NewTweet_Button"], [data-testid="tweetButtonInline"]')) return false;
+
+    el.style.setProperty("background-color", currentColors["--xp-accent"], "important");
+    el.style.setProperty("border-color", currentColors["--xp-accent"], "important");
+    el.style.setProperty("color", "var(--xp-on-accent)", "important");
+
+    const ctaChildren = el.querySelectorAll('[dir="ltr"], span, svg, path');
+    ctaChildren.forEach((child) => {
+      child.style.setProperty("color", "var(--xp-on-accent)", "important");
+      if (child.tagName === "SVG" || child.tagName === "PATH") {
+        child.style.setProperty("fill", "currentColor", "important");
+      }
+    });
+
+    return true;
+  }
+
   function processElement(el) {
+    if (applyPostCtaStyles(el)) {
+      el.dataset.xpVer = currentThemeVersion;
+      return;
+    }
+
     if (!currentThemeVersion || shouldSkipElement(el)) return;
 
     if (el.dataset.xpVer === currentThemeVersion) {
