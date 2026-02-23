@@ -15,7 +15,7 @@
         "*://twitter.com/*",
         "*://x.com/*"
       ],
-      "js": ["content.js"],
+      "js": ["themes.js", "content.js"],
       "run_at": "document_start"
     }
   ],

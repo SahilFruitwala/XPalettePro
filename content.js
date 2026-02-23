@@ -1,556 +1,592 @@
 (() => {
-    const STYLE_ID = 'xp-theme-style';
+  const STYLE_VARS_ID = "xp-theme-vars";
+  const STYLE_RULES_ID = "xp-theme-rules";
+  const MAX_NODES_PER_FRAME = 150;
+  const DEBUG_PERF = false;
 
-    // All themes defined inline to avoid window scope issues
-    const THEMES = {
-        "default": { name: "Default (X)", colors: null },
-        "dracula": {
-            name: "Dracula",
-            colors: {
-                "--xp-bg": "#282a36",
-                "--xp-bg-hover": "#323545",
-                "--xp-border": "rgba(255, 255, 255, 0.08)",
-                "--xp-text": "#f8f8f2",
-                "--xp-text-muted": "#6272a4",
-                "--xp-accent": "#bd93f9"
-            }
-        },
-        "nord": {
-            name: "Nord",
-            colors: {
-                "--xp-bg": "#2e3440",
-                "--xp-bg-hover": "#3b4252",
-                "--xp-border": "rgba(255, 255, 255, 0.08)",
-                "--xp-text": "#d8dee9",
-                "--xp-text-muted": "#81a1c1",
-                "--xp-accent": "#88c0d0"
-            }
-        },
-        "solarized": {
-            name: "Solarized Dark",
-            colors: {
-                "--xp-bg": "#002b36",
-                "--xp-bg-hover": "#073642",
-                "--xp-border": "rgba(255, 255, 255, 0.08)",
-                "--xp-text": "#839496",
-                "--xp-text-muted": "#586e75",
-                "--xp-accent": "#2aa198"
-            }
-        },
-        "matrix": {
-            name: "Matrix",
-            colors: {
-                "--xp-bg": "#0a0a0a",
-                "--xp-bg-hover": "#111811",
-                "--xp-border": "rgba(0, 255, 65, 0.1)",
-                "--xp-text": "#00ff41",
-                "--xp-text-muted": "#008f11",
-                "--xp-accent": "#00ff41"
-            }
-        },
-        "mocha": {
-            name: "Catppuccin Mocha",
-            colors: {
-                "--xp-bg": "#1e1e2e",
-                "--xp-bg-hover": "#28283d",
-                "--xp-border": "rgba(255, 255, 255, 0.08)",
-                "--xp-text": "#cdd6f4",
-                "--xp-text-muted": "#a6adc8",
-                "--xp-accent": "#cba6f7"
-            }
-        },
-        "latte": {
-            name: "Catppuccin Latte (Light)",
-            colors: {
-                "--xp-bg": "#eff1f5",
-                "--xp-bg-hover": "#e6e9ef",
-                "--xp-border": "rgba(0, 0, 0, 0.08)",
-                "--xp-text": "#4c4f69",
-                "--xp-text-muted": "#8c8fa1",
-                "--xp-accent": "#8839ef"
-            }
-        },
-        "github-light": {
-            name: "GitHub Light",
-            colors: {
-                "--xp-bg": "#ffffff",
-                "--xp-bg-hover": "#f6f8fa",
-                "--xp-border": "rgba(0, 0, 0, 0.1)",
-                "--xp-text": "#24292f",
-                "--xp-text-muted": "#57606a",
-                "--xp-accent": "#0969da"
-            }
-        }
+  const THEMES = globalThis.XPaletteThemes;
+  if (!THEMES || typeof THEMES !== "object") {
+    console.warn("[XPalettePro] Theme registry not found. Ensure themes.js loads before content.js");
+    return;
+  }
+
+  const BG_TO_MAIN = new Set([
+    "rgb(255, 255, 255)",
+    "rgb(247, 249, 249)",
+    "rgb(0, 0, 0)",
+    "rgb(15, 20, 25)",
+    "rgb(16, 23, 30)",
+    "rgb(21, 32, 43)",
+    "rgb(25, 39, 52)",
+  ]);
+
+  const BG_TO_HOVER = new Set([
+    "rgb(239, 243, 244)",
+    "rgb(232, 236, 238)",
+    "rgb(230, 233, 234)",
+    "rgb(22, 24, 28)",
+    "rgb(32, 35, 39)",
+    "rgb(39, 44, 48)",
+    "rgb(26, 29, 33)",
+  ]);
+
+  const TEXT_TO_PRIMARY = new Set([
+    "rgb(15, 20, 25)",
+    "rgb(0, 0, 0)",
+    "rgb(255, 255, 255)",
+    "rgb(231, 233, 234)",
+    "rgb(247, 249, 249)",
+    "rgb(239, 243, 244)",
+    "rgb(215, 218, 220)",
+  ]);
+
+  const TEXT_TO_MUTED = new Set([
+    "rgb(83, 100, 113)",
+    "rgb(87, 105, 118)",
+    "rgb(101, 119, 134)",
+    "rgb(113, 118, 123)",
+    "rgb(139, 152, 165)",
+    "rgb(120, 124, 128)",
+  ]);
+
+  const BORDER_TO_THEME = new Set([
+    "rgb(239, 243, 244)",
+    "rgb(207, 217, 222)",
+    "rgb(196, 207, 214)",
+    "rgb(47, 51, 54)",
+    "rgb(56, 68, 77)",
+  ]);
+
+  const ROLE_HINTS = new Set(["button", "menuitem", "option", "tab", "link", "dialog", "article", "listitem"]);
+  const TESTID_HINTS = [
+    "tweet",
+    "cellInnerDiv",
+    "UserCell",
+    "trend",
+    "primaryColumn",
+    "sidebarColumn",
+    "DMDrawer",
+    "HoverCard",
+    "Dropdown",
+    "conversation",
+    "message",
+  ];
+
+  let observer = null;
+  let rafId = null;
+  let currentThemeId = "default";
+  let currentThemeVersion = "";
+  let nodeQueue = new Set();
+
+  function hexToRgb(hex) {
+    if (typeof hex !== "string") return null;
+    const value = hex.trim().replace("#", "");
+    if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(value)) return null;
+    const full = value.length === 3 ? value.split("").map((ch) => ch + ch).join("") : value;
+    const intVal = parseInt(full, 16);
+    return {
+      r: (intVal >> 16) & 255,
+      g: (intVal >> 8) & 255,
+      b: intVal & 255,
     };
+  }
 
-    // Make themes accessible globally for popup
-    window.XPaletteThemes = THEMES;
+  function blendHex(baseHex, accentHex, amount) {
+    const base = hexToRgb(baseHex);
+    const accent = hexToRgb(accentHex);
+    if (!base || !accent) return null;
+    const t = Math.max(0, Math.min(1, amount));
+    const r = Math.round(base.r + (accent.r - base.r) * t);
+    const g = Math.round(base.g + (accent.g - base.g) * t);
+    const b = Math.round(base.b + (accent.b - base.b) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
 
-    // Known X colors to override (computed rgb strings)
-    const BG_TO_MAIN = new Set([
-        'rgb(255, 255, 255)', 'rgb(247, 249, 249)',
-        'rgb(0, 0, 0)', 'rgb(15, 20, 25)', 'rgb(16, 23, 30)',
-        'rgb(21, 32, 43)', 'rgb(25, 39, 52)'
-    ]);
-    const BG_TO_HOVER = new Set([
-        'rgb(239, 243, 244)', 'rgb(232, 236, 238)', 'rgb(230, 233, 234)',
-        'rgb(22, 24, 28)', 'rgb(32, 35, 39)', 'rgb(39, 44, 48)', 'rgb(26, 29, 33)'
-    ]);
-    const TEXT_TO_PRIMARY = new Set([
-        'rgb(15, 20, 25)', 'rgb(0, 0, 0)', 'rgb(255, 255, 255)',
-        'rgb(231, 233, 234)', 'rgb(247, 249, 249)', 'rgb(239, 243, 244)', 'rgb(215, 218, 220)'
-    ]);
-    const TEXT_TO_MUTED = new Set([
-        'rgb(83, 100, 113)', 'rgb(87, 105, 118)', 'rgb(101, 119, 134)',
-        'rgb(113, 118, 123)', 'rgb(139, 152, 165)', 'rgb(120, 124, 128)'
-    ]);
-    const BORDER_TO_THEME = new Set([
-        'rgb(239, 243, 244)', 'rgb(207, 217, 222)', 'rgb(196, 207, 214)',
-        'rgb(47, 51, 54)', 'rgb(56, 68, 77)'
-    ]);
+  function isLightColor(rgbString) {
+    const m = rgbString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return false;
+    const r = Number.parseInt(m[1], 10);
+    const g = Number.parseInt(m[2], 10);
+    const b = Number.parseInt(m[3], 10);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return luminance > 0.7;
+  }
 
-    // Helper: check if an rgba color is essentially white/light
-    function isLightBg(color) {
-        if (BG_TO_MAIN.has(color) || BG_TO_HOVER.has(color)) return true;
-        // Match rgba(255, 255, 255, ...) or rgba(247, 249, 249, ...) etc.
-        const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (m) {
-            const r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
-            // If it's a white/near-white with any alpha
-            if (r > 200 && g > 200 && b > 200) return 'main';
-            // If it's a light gray surface
-            if (r > 220 && g > 220 && b > 220) return 'hover';
-            // Dark mode backgrounds
-            if (r < 30 && g < 35 && b < 55) return 'main';
-        }
-        return false;
+  function detectScheme(themeMeta, colors) {
+    if (themeMeta && typeof themeMeta.name === "string" && themeMeta.name.toLowerCase().includes("light")) {
+      return "light";
     }
+    return isLightColor(colors["--xp-bg"]) ? "light" : "dark";
+  }
 
-    let currentColors = null;
-    let scanTimer = null;
-    let observer = null;
+  function buildThemeVarsCSS(themeMeta) {
+    const c = themeMeta.colors;
+    const scheme = detectScheme(themeMeta, c);
+    const hover = blendHex(c["--xp-bg-hover"], c["--xp-accent"], scheme === "light" ? 0.12 : 0.18) || c["--xp-bg-hover"];
 
-    function hexToRgb(hex) {
-        if (typeof hex !== 'string') return null;
-        const value = hex.trim().replace('#', '');
-        if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(value)) return null;
-        const full = value.length === 3
-            ? value.split('').map(ch => ch + ch).join('')
-            : value;
-        const intVal = parseInt(full, 16);
-        return {
-            r: (intVal >> 16) & 255,
-            g: (intVal >> 8) & 255,
-            b: intVal & 255
-        };
-    }
+    return `
+:root {
+  --xp-bg: ${c["--xp-bg"]};
+  --xp-bg-hover: ${c["--xp-bg-hover"]};
+  --xp-border: ${c["--xp-border"]};
+  --xp-text: ${c["--xp-text"]};
+  --xp-text-muted: ${c["--xp-text-muted"]};
+  --xp-accent: ${c["--xp-accent"]};
+  --xp-interactive-hover: ${hover};
+  --xp-scheme: ${scheme};
+}
+`;
+  }
 
-    function blendHex(baseHex, accentHex, amount) {
-        const base = hexToRgb(baseHex);
-        const accent = hexToRgb(accentHex);
-        if (!base || !accent) return null;
-        const t = Math.max(0, Math.min(1, amount));
-        const r = Math.round(base.r + (accent.r - base.r) * t);
-        const g = Math.round(base.g + (accent.g - base.g) * t);
-        const b = Math.round(base.b + (accent.b - base.b) * t);
-        return `rgb(${r}, ${g}, ${b})`;
-    }
-
-    function buildCSS(c, themeMeta) {
-        const bg = c['--xp-bg'];
-        const bgH = c['--xp-bg-hover'];
-        const brd = c['--xp-border'];
-        const txt = c['--xp-text'];
-        const mut = c['--xp-text-muted'];
-        const acc = c['--xp-accent'];
-
-        const scheme = (themeMeta && themeMeta.name && themeMeta.name.toLowerCase().includes('light')) ? 'light' : 'dark';
-        const interactiveHover = blendHex(bgH, acc, scheme === 'light' ? 0.12 : 0.18) || bgH;
-
-        return `
-html, body, body[style] {
-    background-color: ${bg} !important;
-    color: ${txt} !important;
-    color-scheme: ${scheme} !important;
+  function buildThemeRulesCSS() {
+    return `
+html, body, #react-root, #layers {
+  background-color: var(--xp-bg) !important;
+  color: var(--xp-text) !important;
+  color-scheme: var(--xp-scheme) !important;
 }
 
-/* Inline-style bg overrides */
+/* Inline style surfaces from X runtime */
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(255, 255, 255)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(247, 249, 249)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(0, 0, 0)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(15, 20, 25)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(21, 32, 43)"] {
-    background-color: ${bg} !important;
+  background-color: var(--xp-bg) !important;
 }
+
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(239, 243, 244)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(232, 236, 238)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(32, 35, 39)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="background-color: rgb(39, 44, 48)"] {
-    background-color: ${bgH} !important;
+  background-color: var(--xp-bg-hover) !important;
 }
 
-
-
-/* Inline-style text overrides */
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(15, 20, 25)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(231, 233, 234)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(247, 249, 249)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(239, 243, 244)"] {
-    color: ${txt} !important;
+  color: var(--xp-text) !important;
 }
+
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(83, 100, 113)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(113, 118, 123)"],
 *:not([data-testid$="-follow"]):not([data-testid$="-unfollow"])[style*="color: rgb(139, 152, 165)"] {
-    color: ${mut} !important;
+  color: var(--xp-text-muted) !important;
 }
 
-/* Force ALL borders site-wide to theme border color, except Google containers and iframes */
-*:not(iframe):not([data-testid="google_sign_in_container"]):not([data-testid="google_sign_in_container"] *) {
-    border-color: ${brd} !important;
-}
-/* Keep accent-colored borders (e.g. active tab) */
-div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
-    border-bottom-color: ${acc} !important;
+body {
+  scrollbar-color: var(--xp-border) var(--xp-bg) !important;
 }
 
-/* Layout structure */
-div[data-testid="primaryColumn"],
-div[data-testid="primaryColumn"] > div,
-div[data-testid="sidebarColumn"],
-div[data-testid="sidebarColumn"] > div,
-div[data-testid="sidebarColumn"] > div > div,
-div[data-testid="sidebarColumn"] > div > div > div,
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--xp-bg); }
+::-webkit-scrollbar-thumb { background: var(--xp-border); border-radius: 4px; }
+
 header[role="banner"],
-header[role="banner"] > div,
-header[role="banner"] > div > div,
-header[role="banner"] > div > div > div {
-    background-color: ${bg} !important;
+nav[role="navigation"],
+main,
+aside[role="complementary"],
+div[data-testid="primaryColumn"],
+div[data-testid="sidebarColumn"],
+div[data-testid="DMDrawer"],
+div[data-testid="HoverCard"],
+div[role="dialog"] > div,
+div[role="menu"],
+div[data-testid="Dropdown"],
+div[data-testid="Dropdown"] > div,
+div[data-testid="sheetDialog"] > div,
+div[data-testid="confirmationSheetDialog"] > div {
+  background-color: var(--xp-bg) !important;
+  color: var(--xp-text) !important;
+  border-color: var(--xp-border) !important;
 }
-div[data-testid="sidebarColumn"] section { background-color: ${bgH} !important; }
-div[data-testid="trend"], div[data-testid="UserCell"] { background-color: transparent !important; }
-div[data-testid="sidebarColumn"] input { color: ${txt} !important; }
-div[data-testid="sidebarColumn"] form[role="search"] div[style*="background-color"] { background-color: ${bgH} !important; }
 
-/* Tweets */
-article[data-testid="tweet"], article[data-testid="tweet"] > div { background-color: ${bg} !important; }
-div[data-testid="tweetText"], div[data-testid="tweetText"] span { color: ${txt} !important; }
-
-/* Compose */
-div[data-testid="tweetTextarea_0"], div[data-testid="tweetTextarea_0"] span { color: ${txt} !important; background-color: ${bg} !important; }
-div[data-testid="toolBar"] { background-color: ${bg} !important; }
-
-/* Action counts */
-span[data-testid="app-text-transition-container"],
-span[data-testid="app-text-transition-container"] span { color: ${mut} !important; }
-
-/* Accent/links */
-span[style*="color: rgb(29, 155, 240)"],
-span[style*="color: rgb(29, 161, 242)"],
-a[role="link"] span[style*="color: rgb(29, 155, 240)"],
-a[role="link"] span[style*="color: rgb(29, 161, 242)"] { color: ${acc} !important; }
-div[role="tablist"] div[style*="background-color: rgb(29, 155, 240)"],
-div[role="tablist"] div[style*="background-color: rgb(29, 161, 242)"] { background-color: ${acc} !important; }
-
-/* Follow button — theme accent */
-[data-testid$="-follow"] { background-color: ${acc} !important; border-color: ${acc} !important; }
-[data-testid$="-follow"] span { color: ${bg} !important; }
-[data-testid$="-unfollow"] { border-color: ${brd} !important; }
-
-/* Hover states */
-a[role="link"]:hover span { color: ${acc} !important; }
-article[data-testid="tweet"]:hover { background-color: ${interactiveHover} !important; }
-div[data-testid="trend"]:hover { background-color: ${interactiveHover} !important; }
-div[data-testid="UserCell"]:hover { background-color: ${interactiveHover} !important; }
-header[role="banner"] a[role="link"]:hover div { background-color: ${interactiveHover} !important; }
-nav[role="navigation"] a[role="link"]:hover,
-nav[role="navigation"] a[role="link"]:focus-visible { background-color: ${interactiveHover} !important; }
+nav[role="navigation"] a[role="link"],
 nav[role="navigation"] a[role="link"] span,
-nav[role="navigation"] a[role="link"]:hover span,
-nav[role="navigation"] a[role="link"]:focus-visible span {
-    color: ${txt} !important;
+nav[role="navigation"] a[role="link"] svg {
+  color: var(--xp-text) !important;
 }
+
+section[aria-labelledby],
+div[data-testid="cellInnerDiv"],
+article[data-testid="tweet"],
+article[data-testid="tweet"] > div,
+div[data-testid="UserCell"],
+div[data-testid="trend"],
+div[role="listitem"] {
+  background-color: var(--xp-bg) !important;
+  border-color: var(--xp-border) !important;
+}
+
+article[data-testid="tweet"]:hover,
+div[data-testid="UserCell"]:hover,
+div[data-testid="trend"]:hover,
 [role="menuitem"]:hover,
 [role="menuitem"]:focus-visible,
 [role="option"]:hover,
 [role="option"]:focus-visible,
+nav[role="navigation"] a[role="link"]:hover,
+nav[role="navigation"] a[role="link"]:focus-visible,
 [role="button"]:hover:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]),
 [role="button"]:focus-visible:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]) {
-    background-color: ${interactiveHover} !important;
+  background-color: var(--xp-interactive-hover) !important;
 }
 
-/* Dialogs */
-div[role="dialog"] > div { background-color: ${bg} !important; }
-div[data-testid="HoverCard"], div[data-testid="HoverCard"] > div { background-color: ${bg} !important; }
-nav[role="navigation"] { background-color: ${bg} !important; }
-div[data-testid="DMDrawer"] { background-color: ${bg} !important; }
-
-/* Overlay menus (e.g. "More") */
-div[data-testid="Dropdown"],
-div[data-testid="Dropdown"] > div,
-div[data-testid="Dropdown"] [role="menu"],
-div[data-testid="Dropdown"] [role="menu"] > div,
-div[role="menu"] {
-    background-color: ${bg} !important;
-    border-color: ${brd} !important;
-}
-div[data-testid="Dropdown"] [role="menuitem"],
-div[data-testid="Dropdown"] [role="menuitem"] span,
-div[role="menu"] [role="menuitem"],
-div[role="menu"] [role="menuitem"] span {
-    color: ${txt} !important;
-}
-div[data-testid="Dropdown"] [role="menuitem"]:hover,
-div[data-testid="Dropdown"] [role="menuitem"]:focus-visible,
-div[role="menu"] [role="menuitem"]:hover,
-div[role="menu"] [role="menuitem"]:focus-visible {
-    background-color: ${interactiveHover} !important;
+input,
+textarea,
+div[data-testid="tweetTextarea_0"],
+div[data-testid="tweetTextarea_0"] span,
+form[role="search"] div[style*="background-color"] {
+  background-color: var(--xp-bg-hover) !important;
+  color: var(--xp-text) !important;
+  border-color: var(--xp-border) !important;
 }
 
-/* Scrollbar */
-body { scrollbar-color: ${brd} ${bg} !important; }
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: ${bg}; }
-::-webkit-scrollbar-thumb { background: ${brd}; border-radius: 4px; }
+span[data-testid="app-text-transition-container"],
+span[data-testid="app-text-transition-container"] span {
+  color: var(--xp-text-muted) !important;
+}
+
+span[style*="color: rgb(29, 155, 240)"],
+span[style*="color: rgb(29, 161, 242)"],
+a[role="link"] span[style*="color: rgb(29, 155, 240)"],
+a[role="link"] span[style*="color: rgb(29, 161, 242)"] {
+  color: var(--xp-accent) !important;
+}
+
+div[role="tablist"] div[style*="background-color: rgb(29, 155, 240)"],
+div[role="tablist"] div[style*="background-color: rgb(29, 161, 242)"],
+div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
+  background-color: var(--xp-accent) !important;
+  border-bottom-color: var(--xp-accent) !important;
+}
+
+[data-testid$="-follow"] {
+  background-color: var(--xp-accent) !important;
+  border-color: var(--xp-accent) !important;
+}
+
+[data-testid$="-follow"] span {
+  color: var(--xp-bg) !important;
+}
+
+[data-testid$="-unfollow"] {
+  border-color: var(--xp-border) !important;
+}
+
+.xp-bg-main { background-color: var(--xp-bg) !important; }
+.xp-bg-hover { background-color: var(--xp-bg-hover) !important; }
+.xp-txt-primary { color: var(--xp-text) !important; }
+.xp-txt-muted { color: var(--xp-text-muted) !important; }
+.xp-brd {
+  border-bottom-color: var(--xp-border) !important;
+  border-top-color: var(--xp-border) !important;
+  border-left-color: var(--xp-border) !important;
+  border-right-color: var(--xp-border) !important;
+}
 `;
+  }
+
+  function ensureRulesStyle() {
+    if (document.getElementById(STYLE_RULES_ID)) return;
+    const styleEl = document.createElement("style");
+    styleEl.id = STYLE_RULES_ID;
+    styleEl.textContent = buildThemeRulesCSS();
+    (document.head || document.documentElement).appendChild(styleEl);
+  }
+
+  function setVarsStyle(themeMeta) {
+    const existing = document.getElementById(STYLE_VARS_ID);
+    if (existing) existing.remove();
+
+    const styleEl = document.createElement("style");
+    styleEl.id = STYLE_VARS_ID;
+    styleEl.textContent = buildThemeVarsCSS(themeMeta);
+    (document.head || document.documentElement).appendChild(styleEl);
+  }
+
+  function removeThemeStyles() {
+    const varsStyle = document.getElementById(STYLE_VARS_ID);
+    if (varsStyle) varsStyle.remove();
+
+    const rulesStyle = document.getElementById(STYLE_RULES_ID);
+    if (rulesStyle) rulesStyle.remove();
+  }
+
+  function shouldSkipElement(el) {
+    if (!el || el.nodeType !== Node.ELEMENT_NODE) return true;
+    if (el.matches("iframe, canvas, video, img, svg, path")) return true;
+    if (el.closest('[data-testid="google_sign_in_container"]')) return true;
+    if (el.closest('[data-testid="videoComponent"], [data-testid="card.wrapper"]')) return true;
+    return false;
+  }
+
+  function hasStyleHints(el) {
+    const inline = el.getAttribute("style");
+    if (inline && /(background|color|border)/i.test(inline)) return true;
+
+    const role = el.getAttribute("role");
+    if (role && ROLE_HINTS.has(role)) return true;
+
+    const testid = el.getAttribute("data-testid");
+    if (testid) {
+      for (const hint of TESTID_HINTS) {
+        if (testid.includes(hint)) return true;
+      }
     }
 
-    function scanAndOverride() {
-        if (!currentColors) return;
+    return false;
+  }
 
-        const bg = currentColors['--xp-bg'];
-        const bgH = currentColors['--xp-bg-hover'];
-        const brd = currentColors['--xp-border'];
-        const txt = currentColors['--xp-text'];
-        const mut = currentColors['--xp-text-muted'];
+  function classifyBackground(el, cs) {
+    const bg = cs.backgroundColor;
+    if (bg === "transparent" || bg === "rgba(0, 0, 0, 0)") return;
 
-        // Override body inline style directly (safe backup)
-        if (document.body) {
-            if (!document.body.hasAttribute('data-xp-orig-body-bg')) {
-                document.body.setAttribute('data-xp-orig-body-bg', document.body.style.backgroundColor || '');
-            }
-            if (!document.body.hasAttribute('data-xp-orig-body-sc')) {
-                document.body.setAttribute('data-xp-orig-body-sc', document.body.style.scrollbarColor || '');
-            }
-            document.body.style.setProperty('background-color', bg, 'important');
-        }
-
-        // Scan ALL elements in the main content areas
-        const containers = document.querySelectorAll(
-            'div[data-testid="primaryColumn"], ' +
-            'div[data-testid="sidebarColumn"], ' +
-            'header[role="banner"], ' +
-            'div[role="dialog"], ' +
-            'div[data-testid="Dropdown"], ' +
-            'div[role="menu"]'
-        );
-
-        containers.forEach(container => {
-            const elements = [container, ...container.querySelectorAll('*')];
-            for (let i = 0; i < elements.length; i++) {
-                const el = elements[i];
-                
-                // Exempt Google sign-in container and specific native buttons (Follow)
-                if (el.tagName === 'IFRAME' || el.closest('[data-testid="google_sign_in_container"]')) continue;
-                if (el.closest('[data-testid$="-follow"]') || el.closest('[data-testid$="-unfollow"]')) continue;
-
-                const cs = getComputedStyle(el);
-                const tag = el.tagName;
-
-                // ---- Background ----
-                const storedBg = el.getAttribute('data-xp-bg');
-                if (!storedBg) {
-                    const bgColor = cs.backgroundColor;
-                    if (bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-                        const lightCheck = isLightBg(bgColor);
-                        if (lightCheck === 'main' || lightCheck === true || BG_TO_MAIN.has(bgColor)) {
-                            el.dataset.xpBg = 'main';
-                            el.setAttribute('data-xp-orig-bg', el.style.backgroundColor || '');
-                        } else if (lightCheck === 'hover' || BG_TO_HOVER.has(bgColor)) {
-                            el.dataset.xpBg = 'hover';
-                            el.setAttribute('data-xp-orig-bg', el.style.backgroundColor || '');
-                        }
-                    }
-                }
-
-                if (el.getAttribute('data-xp-bg') === 'main') {
-                    // Let interactive controls keep dynamic hover states via CSS.
-                    if (!el.matches('a[role="link"], [role="menuitem"], [role="button"], [role="option"], button')) {
-                        el.style.setProperty('background-color', bg, 'important');
-                    }
-                } else if (el.getAttribute('data-xp-bg') === 'hover') {
-                    if (!el.matches('a[role="link"], [role="menuitem"], [role="button"], [role="option"], button')) {
-                        el.style.setProperty('background-color', bgH, 'important');
-                    }
-                }
-
-                // ---- Text color ----
-                const storedTxt = el.getAttribute('data-xp-txt');
-                if (!storedTxt) {
-                    const textColor = cs.color;
-                    if (TEXT_TO_PRIMARY.has(textColor)) {
-                        el.setAttribute('data-xp-txt', 'primary');
-                        el.setAttribute('data-xp-orig-txt', el.style.color || '');
-                    } else if (TEXT_TO_MUTED.has(textColor)) {
-                        el.setAttribute('data-xp-txt', 'muted');
-                        el.setAttribute('data-xp-orig-txt', el.style.color || '');
-                    }
-                }
-
-                if (el.getAttribute('data-xp-txt') === 'primary') {
-                    el.style.setProperty('color', txt, 'important');
-                } else if (el.getAttribute('data-xp-txt') === 'muted') {
-                    el.style.setProperty('color', mut, 'important');
-                }
-
-                // ---- Borders ----
-                const storedBrd = el.getAttribute('data-xp-brd');
-                if (!storedBrd) {
-                    const isNotThemedDefault = (c) => c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
-                    let hasBorder = false;
-                    if (cs.borderBottomWidth !== '0px' && isNotThemedDefault(cs.borderBottomColor)) hasBorder = true;
-                    if (cs.borderTopWidth !== '0px' && isNotThemedDefault(cs.borderTopColor)) hasBorder = true;
-                    if (cs.borderLeftWidth !== '0px' && isNotThemedDefault(cs.borderLeftColor)) hasBorder = true;
-                    if (cs.borderRightWidth !== '0px' && isNotThemedDefault(cs.borderRightColor)) hasBorder = true;
-                    
-                    if (hasBorder) {
-                        el.setAttribute('data-xp-brd', 'true');
-                        el.setAttribute('data-xp-orig-brcb', el.style.borderBottomColor || '');
-                        el.setAttribute('data-xp-orig-brct', el.style.borderTopColor || '');
-                        el.setAttribute('data-xp-orig-brcl', el.style.borderLeftColor || '');
-                        el.setAttribute('data-xp-orig-brcr', el.style.borderRightColor || '');
-                    }
-                }
-
-                if (el.getAttribute('data-xp-brd') === 'true') {
-                    if (cs.borderBottomWidth !== '0px') el.style.setProperty('border-bottom-color', brd, 'important');
-                    if (cs.borderTopWidth !== '0px') el.style.setProperty('border-top-color', brd, 'important');
-                    if (cs.borderLeftWidth !== '0px') el.style.setProperty('border-left-color', brd, 'important');
-                    if (cs.borderRightWidth !== '0px') el.style.setProperty('border-right-color', brd, 'important');
-                }
-            }
-        });
+    if (BG_TO_MAIN.has(bg)) {
+      el.classList.add("xp-bg-main");
+      return;
     }
 
-    function clearAllOverrides() {
-        if (document.body) {
-            if (document.body.hasAttribute('data-xp-orig-body-bg')) {
-                const orig = document.body.getAttribute('data-xp-orig-body-bg');
-                if (orig) document.body.style.setProperty('background-color', orig);
-                else document.body.style.removeProperty('background-color');
-                document.body.removeAttribute('data-xp-orig-body-bg');
-            }
-            if (document.body.hasAttribute('data-xp-orig-body-sc')) {
-                const orig = document.body.getAttribute('data-xp-orig-body-sc');
-                if (orig) document.body.style.setProperty('scrollbar-color', orig);
-                else document.body.style.removeProperty('scrollbar-color');
-                document.body.removeAttribute('data-xp-orig-body-sc');
-            }
-        }
-        
-        const modifiedElements = document.querySelectorAll('[data-xp-bg], [data-xp-txt], [data-xp-brd]');
-        modifiedElements.forEach(el => {
-            if (el.hasAttribute('data-xp-bg')) {
-                const orig = el.getAttribute('data-xp-orig-bg');
-                if (orig) el.style.setProperty('background-color', orig);
-                else el.style.removeProperty('background-color');
-                el.removeAttribute('data-xp-orig-bg');
-                el.removeAttribute('data-xp-bg');
-            }
-            if (el.hasAttribute('data-xp-txt')) {
-                const orig = el.getAttribute('data-xp-orig-txt');
-                if (orig) el.style.setProperty('color', orig);
-                else el.style.removeProperty('color');
-                el.removeAttribute('data-xp-orig-txt');
-                el.removeAttribute('data-xp-txt');
-            }
-            if (el.hasAttribute('data-xp-brd')) {
-                const origB = el.getAttribute('data-xp-orig-brcb');
-                const origT = el.getAttribute('data-xp-orig-brct');
-                const origL = el.getAttribute('data-xp-orig-brcl');
-                const origR = el.getAttribute('data-xp-orig-brcr');
-                
-                if (origB) el.style.setProperty('border-bottom-color', origB); else el.style.removeProperty('border-bottom-color');
-                if (origT) el.style.setProperty('border-top-color', origT); else el.style.removeProperty('border-top-color');
-                if (origL) el.style.setProperty('border-left-color', origL); else el.style.removeProperty('border-left-color');
-                if (origR) el.style.setProperty('border-right-color', origR); else el.style.removeProperty('border-right-color');
-                
-                el.removeAttribute('data-xp-orig-brcb');
-                el.removeAttribute('data-xp-orig-brct');
-                el.removeAttribute('data-xp-orig-brcl');
-                el.removeAttribute('data-xp-orig-brcr');
-                el.removeAttribute('data-xp-brd');
-            }
-        });
+    if (BG_TO_HOVER.has(bg)) {
+      el.classList.add("xp-bg-hover");
+      return;
     }
 
-    function applyTheme(themeId) {
-        const existingStyle = document.getElementById(STYLE_ID);
-        if (existingStyle) existingStyle.remove();
+    const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return;
 
-        const theme = THEMES[themeId];
-        if (!theme || !theme.colors) {
-            currentColors = null;
-            clearAllOverrides();
-            return;
-        }
+    const r = Number.parseInt(m[1], 10);
+    const g = Number.parseInt(m[2], 10);
+    const b = Number.parseInt(m[3], 10);
 
-        currentColors = theme.colors;
-
-        // Inject CSS
-        const styleEl = document.createElement('style');
-        styleEl.id = STYLE_ID;
-        styleEl.textContent = buildCSS(theme.colors, theme);
-        document.head.appendChild(styleEl);
-
-        // Run JS scan
-        scanAndOverride();
+    if ((r > 220 && g > 220 && b > 220) || (r < 30 && g < 35 && b < 55)) {
+      el.classList.add("xp-bg-main");
+      return;
     }
 
-    function startObserver() {
-        if (observer) return;
+    if (r > 200 && g > 200 && b > 200) {
+      el.classList.add("xp-bg-hover");
+    }
+  }
 
-        observer = new MutationObserver(() => {
-            if (!currentColors) return;
-            clearTimeout(scanTimer);
-            scanTimer = setTimeout(scanAndOverride, 150);
-        });
+  function classifyText(el, cs) {
+    const color = cs.color;
 
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-        });
+    if (TEXT_TO_PRIMARY.has(color)) {
+      el.classList.add("xp-txt-primary");
+      return;
     }
 
-    function init() {
-        chrome.storage.local.get(['xp_theme'], (result) => {
-            const themeId = result.xp_theme || 'default';
-            if (themeId === 'default') return;
+    if (TEXT_TO_MUTED.has(color)) {
+      el.classList.add("xp-txt-muted");
+    }
+  }
 
-            const tryApply = () => {
-                if (document.body) {
-                    applyTheme(themeId);
-                    startObserver();
-                    // Re-scan after X finishes rendering
-                    setTimeout(scanAndOverride, 500);
-                    setTimeout(scanAndOverride, 1500);
-                    setTimeout(scanAndOverride, 4000);
-                } else {
-                    requestAnimationFrame(tryApply);
-                }
-            };
-            tryApply();
-        });
+  function classifyBorder(el, cs) {
+    const hasBorder =
+      (cs.borderBottomWidth !== "0px" && cs.borderBottomColor !== "transparent" && cs.borderBottomColor !== "rgba(0, 0, 0, 0)") ||
+      (cs.borderTopWidth !== "0px" && cs.borderTopColor !== "transparent" && cs.borderTopColor !== "rgba(0, 0, 0, 0)") ||
+      (cs.borderLeftWidth !== "0px" && cs.borderLeftColor !== "transparent" && cs.borderLeftColor !== "rgba(0, 0, 0, 0)") ||
+      (cs.borderRightWidth !== "0px" && cs.borderRightColor !== "transparent" && cs.borderRightColor !== "rgba(0, 0, 0, 0)");
+
+    if (!hasBorder) {
+      el.classList.remove("xp-brd");
+      return;
     }
 
-    init();
+    const borderColor = cs.borderBottomColor;
+    if (BORDER_TO_THEME.has(borderColor) || hasStyleHints(el)) {
+      el.classList.add("xp-brd");
+    }
+  }
 
-    // Listen for theme changes from popup
-    chrome.runtime.onMessage.addListener((request) => {
-        if (request.type === 'THEME_CHANGED') {
-            applyTheme(request.theme);
-            startObserver();
-            setTimeout(scanAndOverride, 300);
-            setTimeout(scanAndOverride, 1000);
-        }
+  function processElement(el) {
+    if (!currentThemeVersion || shouldSkipElement(el)) return;
+
+    if (el.dataset.xpVer === currentThemeVersion) {
+      return;
+    }
+
+    if (!hasStyleHints(el)) {
+      el.dataset.xpVer = currentThemeVersion;
+      return;
+    }
+
+    const cs = getComputedStyle(el);
+    classifyBackground(el, cs);
+    classifyText(el, cs);
+    classifyBorder(el, cs);
+    el.dataset.xpVer = currentThemeVersion;
+  }
+
+  function addNodeToQueue(node, includeDescendants) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
+
+    nodeQueue.add(node);
+
+    if (!includeDescendants) return;
+
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+      nodeQueue.add(walker.currentNode);
+    }
+  }
+
+  function scheduleFlush() {
+    if (rafId || !currentThemeVersion) return;
+
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      flushQueue();
     });
+  }
+
+  function flushQueue() {
+    if (!currentThemeVersion || nodeQueue.size === 0) return;
+
+    const start = performance.now();
+    let processed = 0;
+
+    for (const el of nodeQueue) {
+      nodeQueue.delete(el);
+      processElement(el);
+      processed += 1;
+      if (processed >= MAX_NODES_PER_FRAME) break;
+    }
+
+    if (DEBUG_PERF && processed > 0) {
+      const duration = Math.round((performance.now() - start) * 100) / 100;
+      console.debug("[XPalettePro] scanner", {
+        processed,
+        remaining: nodeQueue.size,
+        durationMs: duration,
+      });
+    }
+
+    if (nodeQueue.size > 0) {
+      scheduleFlush();
+    }
+  }
+
+  function clearThemedClasses() {
+    const themed = document.querySelectorAll(".xp-bg-main, .xp-bg-hover, .xp-txt-primary, .xp-txt-muted, .xp-brd, [data-xp-ver]");
+    themed.forEach((el) => {
+      el.classList.remove("xp-bg-main", "xp-bg-hover", "xp-txt-primary", "xp-txt-muted", "xp-brd");
+      delete el.dataset.xpVer;
+    });
+  }
+
+  function stopObserver() {
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    nodeQueue.clear();
+  }
+
+  function startObserver() {
+    if (observer) return;
+
+    observer = new MutationObserver((records) => {
+      if (!currentThemeVersion) return;
+
+      for (const record of records) {
+        if (record.type === "childList") {
+          record.addedNodes.forEach((node) => addNodeToQueue(node, true));
+          continue;
+        }
+
+        if (record.type === "attributes") {
+          if (record.attributeName === "style" && record.target && record.target.nodeType === Node.ELEMENT_NODE) {
+            delete record.target.dataset.xpVer;
+          }
+          addNodeToQueue(record.target, false);
+        }
+      }
+
+      scheduleFlush();
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style"],
+    });
+  }
+
+  function queueInitialScan() {
+    if (!document.body) return;
+
+    addNodeToQueue(document.body, true);
+    const main = document.querySelector("main");
+    if (main) addNodeToQueue(main, true);
+
+    const layers = document.getElementById("layers");
+    if (layers) addNodeToQueue(layers, true);
+
+    scheduleFlush();
+
+    // One safety pass after hydration for late-mounted overlays.
+    setTimeout(() => {
+      if (!currentThemeVersion) return;
+      const root = document.body;
+      if (root) {
+        addNodeToQueue(root, true);
+        scheduleFlush();
+      }
+    }, 900);
+  }
+
+  function applyTheme(themeId) {
+    const theme = THEMES[themeId];
+
+    if (!theme || !theme.colors) {
+      currentThemeId = "default";
+      currentThemeVersion = "";
+      stopObserver();
+      removeThemeStyles();
+      clearThemedClasses();
+      return;
+    }
+
+    currentThemeId = themeId;
+    currentThemeVersion = `${themeId}:${Date.now()}`;
+
+    ensureRulesStyle();
+    setVarsStyle(theme);
+    startObserver();
+    queueInitialScan();
+  }
+
+  function init() {
+    chrome.storage.local.get(["xp_theme"], (result) => {
+      const themeId = result.xp_theme || "default";
+
+      const tryApply = () => {
+        if (!document.body) {
+          requestAnimationFrame(tryApply);
+          return;
+        }
+
+        applyTheme(themeId);
+      };
+
+      tryApply();
+    });
+  }
+
+  init();
+
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.type !== "THEME_CHANGED") return;
+    applyTheme(request.theme);
+  });
 })();

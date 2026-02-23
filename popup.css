@@ -4,6 +4,9 @@
   --primary: #1da1f2;
   --border: #333333;
   --hover: #2c2c2c;
+  --muted: #a0a0a0;
+  --active-bg: rgba(29, 161, 242, 0.1);
+  --dot-border: rgba(255, 255, 255, 0.2);
 }
 
 body {
@@ -32,7 +35,7 @@ body {
 .header p {
   margin: 4px 0 0 0;
   font-size: 13px;
-  color: #a0a0a0;
+  color: var(--muted);
 }
 
 .theme-list {
@@ -63,7 +66,7 @@ body {
 
 .theme-btn.active {
   border-color: var(--primary);
-  background-color: rgba(29, 161, 242, 0.1);
+  background-color: var(--active-bg);
 }
 
 .theme-preview {
@@ -75,7 +78,7 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--dot-border);
 }
 
 .footer {
@@ -83,7 +86,7 @@ body {
   border-top: 1px solid var(--border);
   text-align: center;
   font-size: 12px;
-  color: #888;
+  color: var(--muted);
 }
 
 .footer strong {

@@ -9,7 +9,7 @@
 - **Curated Themes**: Choose from beautifully balanced palettes including Dracula, Nord, Matrix, Solarized Dark, Catppuccin Mocha, Catppuccin Latte, and GitHub Light.
 - **Instant Switching**: Swap themes instantly from the extension popup without needing to reload the page.
 - **Native Symbiosis**: Designed to work gracefully with X.com's underlying structure. You can cleanly revert to X's default themes anytime.
-- **Lightweight & Fast**: Built purely with efficient CSS overrides and localized JavaScript mutation observers. Zero bloat, zero lag.
+- **Lightweight & Fast**: CSS-first theming with a targeted mutation scanner keeps visuals consistent while reducing heavy full-page rescans.
 
 ## 🚀 Installation (Load Unpacked)
 
@@ -44,10 +44,14 @@ XPalettePro was built with privacy as the core fundamental principle. **Your dat
 
 ### Theming Engine
 
-XPalettePro utilizes a two-part hybrid engine:
+XPalettePro uses a two-layer CSS-first engine:
 
-1. **Master CSS Block**: Handles massive layout structural color overrides instantaneously.
-2. **JavaScript DOM Scanner**: Recursively scans and cleans inline `!important` tags left by X's complex rendering engine (like React-driven dynamic buttons), cleanly repainting them to match the theme.
+1. **Theme Variables Layer**: Injects a small `:root` variable block for the selected theme.
+2. **Theme Rules Layer**: Applies stable selectors across feed, profile, explore, notifications, bookmarks, messages, dialogs, menus, and settings surfaces.
+
+For dynamic React updates, a **targeted mutation queue** classifies only changed/new nodes and applies lightweight theme classes (`xp-bg-main`, `xp-bg-hover`, `xp-txt-primary`, `xp-txt-muted`, `xp-brd`) instead of rescanning the full app tree on every mutation.
+
+The popup also inherits the active theme for consistent extension UI.
 
 ## 🤝 Contributing
 
