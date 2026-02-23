@@ -223,6 +223,15 @@ nav[role="navigation"] a[role="link"],
   color: var(--xp-text) !important;
 }
 
+[data-testid^="AppTabBar_"][data-testid$="_Link"],
+[data-testid^="AppTabBar_"][data-testid$="_Link"] *,
+[data-testid^="AppTabBar_"][data-testid$="_Link"] [dir="ltr"],
+[data-testid^="AppTabBar_"][data-testid$="_Link"] svg,
+[data-testid^="AppTabBar_"][data-testid$="_Link"] path {
+  color: var(--xp-text) !important;
+  fill: currentColor !important;
+}
+
 /* Live module and similar right-rail placements */
 div[data-testid="placementTracking"],
 div[data-testid="placementTracking"] > button,
