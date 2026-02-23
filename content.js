@@ -216,6 +216,38 @@ div[data-testid="confirmationSheetDialog"] > div {
   border-color: var(--xp-border) !important;
 }
 
+/* Confirmation dialog: clear recent searches */
+div[data-testid="deleteRecentSearchesDialog"] {
+  background-color: var(--xp-bg) !important;
+  color: var(--xp-text) !important;
+  border-color: var(--xp-border) !important;
+  border-radius: 16px !important;
+}
+
+div[data-testid="deleteRecentSearchesDialog"] h1,
+div[data-testid="deleteRecentSearchesDialog"] [dir="ltr"] {
+  color: var(--xp-text) !important;
+}
+
+div[data-testid="deleteRecentSearchesDialog"] [data-testid="confirmationSheetCancel"] {
+  background-color: transparent !important;
+  border-color: var(--xp-border) !important;
+}
+
+div[data-testid="deleteRecentSearchesDialog"] [data-testid="confirmationSheetCancel"] * {
+  color: var(--xp-text) !important;
+}
+
+/* Keep destructive action visually destructive but readable */
+div[data-testid="deleteRecentSearchesDialog"] [data-testid="confirmationSheetConfirm"] {
+  background-color: rgb(244, 33, 46) !important;
+  border-color: rgb(244, 33, 46) !important;
+}
+
+div[data-testid="deleteRecentSearchesDialog"] [data-testid="confirmationSheetConfirm"] * {
+  color: #ffffff !important;
+}
+
 nav[role="navigation"] a[role="link"],
 [data-testid^="AppTabBar"] a[role="link"],
 [data-testid^="AppTabBar"] a[role="link"] span,
