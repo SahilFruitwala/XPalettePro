@@ -1,58 +1,49 @@
-# XPalettePro 🎨
+# XPalettePro
 
-**XPalettePro** is a lightweight, privacy-first Chrome Extension that allows you to transform the look of X (Twitter) with beautiful, carefully curated color palettes. It seamlessly restyles the entire website without breaking functionality, offering both vibrant dark modes and clean light modes.
+XPalettePro is a Chrome extension that applies curated, high-contrast themes to X/Twitter (`x.com`, `twitter.com`) with fast switching and local-only storage.
 
 ![XPalettePro Logo](icons/icon128.png)
 
-## ✨ Features
+## Features
+- Curated themes: Dracula, Nord, Solarized, Matrix, Catppuccin (Mocha/Latte), and GitHub Light.
+- Instant switching from popup without manual reload.
+- CSS-first theming with targeted runtime patching for dynamic X UI surfaces.
+- Privacy-first design with no analytics and no external requests.
 
-- **Curated Themes**: Choose from beautifully balanced palettes including Dracula, Nord, Matrix, Solarized Dark, Catppuccin Mocha, Catppuccin Latte, and GitHub Light.
-- **Instant Switching**: Swap themes instantly from the extension popup without needing to reload the page.
-- **Native Symbiosis**: Designed to work gracefully with X.com's underlying structure. You can cleanly revert to X's default themes anytime.
-- **Lightweight & Fast**: CSS-first theming with a targeted mutation scanner keeps visuals consistent while reducing heavy full-page rescans.
+## Install (Load Unpacked)
+1. Clone or download this repository.
+2. Open `chrome://extensions/`.
+3. Enable `Developer mode`.
+4. Click `Load unpacked` and select this project folder.
+5. Pin the extension for quick access.
 
-## 🚀 Installation (Load Unpacked)
+Recommended: set native X appearance to `Lights out` before applying custom themes.
 
-If you want to install from source before it's available on the Chrome Web Store:
+## GitHub Pages Privacy Policy
+- Hosted policy page: `privacy-policy.html`
+- Repo markdown policy: `PRIVACY_POLICY.md`
 
-1. Clone or download this repository to your computer.
-2. Open Chrome and navigate to `chrome://extensions/`.
-3. Enable **"Developer mode"** in the top right corner.
-4. Click **"Load unpacked"** and select the folder containing this extension's files.
-5. Setup complete! Pin the extension to your toolbar.
+If your Pages URL is `https://<username>.github.io/<repo>/`, your policy link is:
 
-> **💡 Best Results:** Make sure your native X.com theme is set to **"Lights out"** (black) before applying custom themes!
+`https://<username>.github.io/<repo>/privacy-policy.html`
 
-## 🔒 Privacy Policy
+This URL can be used in extension listing metadata where a public privacy policy URL is required.
 
-XPalettePro was built with privacy as the core fundamental principle. **Your data is yours.**
+## Tech Notes
+- Stack: Vanilla JavaScript, CSS, Chrome Extension Manifest V3.
+- Content script load order: `themes.js` then `content.js`.
+- Storage key: `xp_theme` in `chrome.storage.local`.
 
-- **No Data Collection**: This extension does not collect, monitor, or transmit _any_ personal data, browsing history, or interaction metrics.
-- **No External Servers**: The extension runs 100% locally on your machine. It makes zero network requests to external servers.
-- **No Analytics or Trackers**: We do not use Google Analytics or any third-party tracking scripts.
-- **Minimal Permissions**: We only request two specific permissions:
-  - `storage`: Exclusively used to locally save your active theme choice so it remembers your preference when you open a new tab.
-  - `*://*.twitter.com/*` and `*://*.x.com/*`: Restricted specifically so the extension can only inject CSS and colors into the Twitter/X application, and nowhere else.
+## Permissions
+- `storage`: saves selected theme locally.
+- Host access only for X/Twitter domains required for UI theming.
 
-## 🛠️ Development
+## Development
+Main files:
+- `content.js`: theme engine, CSS injection, targeted mutation handling.
+- `themes.js`: canonical theme definitions.
+- `popup.js` + `popup.css` + `popup.html`: selector UI and theme switch dispatch.
+- `manifest.json`: MV3 config and content script registration.
 
-### Stack
-
-- Vanilla JavaScript
-- Plain CSS overrides
-- Chrome Extension Manifest V3
-
-### Theming Engine
-
-XPalettePro uses a two-layer CSS-first engine:
-
-1. **Theme Variables Layer**: Injects a small `:root` variable block for the selected theme.
-2. **Theme Rules Layer**: Applies stable selectors across feed, profile, explore, notifications, bookmarks, messages, dialogs, menus, and settings surfaces.
-
-For dynamic React updates, a **targeted mutation queue** classifies only changed/new nodes and applies lightweight theme classes (`xp-bg-main`, `xp-bg-hover`, `xp-txt-primary`, `xp-txt-muted`, `xp-brd`) instead of rescanning the full app tree on every mutation.
-
-The popup also inherits the active theme for consistent extension UI.
-
-## 🤝 Contributing
-
-Feel free to open issues or submit Pull Requests if you'd like to add new color palettes or refine the JS DOM scanner logic! All submitted themes must adhere to accessible contrast guidelines and cover both background and core text colors.
+## License / Usage
+Add your preferred license if this repository will be publicly distributed.
