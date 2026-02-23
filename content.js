@@ -369,7 +369,26 @@ div[data-testid="trend"]:hover,
 }
 
 [data-testid^="AppTabBar_"][data-testid$="_Link"]:hover > div,
-[data-testid^="AppTabBar_"][data-testid$="_Link"]:focus-visible > div {
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:focus-visible > div,
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:hover > div > div:first-child,
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:focus-visible > div > div:first-child {
+  background-color: var(--xp-interactive-hover) !important;
+  border-radius: 9999px !important;
+}
+
+[data-testid^="AppTabBar_"][data-testid$="_Link"] > div,
+[data-testid^="AppTabBar_"][data-testid$="_Link"] > div > div:first-child {
+  border-radius: 9999px !important;
+}
+
+/* Fallback for sidebar links without AppTabBar data-testid (e.g. Grok/Premium variants) */
+header[role="banner"] nav[role="navigation"] a[role="link"]:hover,
+header[role="banner"] nav[role="navigation"] a[role="link"]:focus-visible {
+  background-color: transparent !important;
+}
+
+header[role="banner"] nav[role="navigation"] a[role="link"]:hover > div,
+header[role="banner"] nav[role="navigation"] a[role="link"]:focus-visible > div {
   background-color: var(--xp-interactive-hover) !important;
   border-radius: 9999px !important;
 }
