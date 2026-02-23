@@ -2,7 +2,21 @@
   const STYLE_VARS_ID = "xp-theme-vars";
   const STYLE_RULES_ID = "xp-theme-rules";
   const MAX_NODES_PER_FRAME = 150;
+  const MAX_NODES_PER_IDLE = 220;
   const DEBUG_PERF = false;
+  const SCAN_SCOPE_SELECTOR = [
+    'div[data-testid="primaryColumn"]',
+    'div[data-testid="sidebarColumn"]',
+    'div[data-testid="placementTracking"]',
+    'div[data-testid="toolBar"]',
+    'div[data-testid="DMDrawer"]',
+    'div[data-testid="HoverCard"]',
+    'div[role="dialog"]',
+    'div[role="menu"]',
+    'div[data-testid="Dropdown"]',
+    'form[role="search"]',
+    'header[role="banner"] nav[role="navigation"]',
+  ].join(", ");
 
   const THEMES = globalThis.XPaletteThemes;
   if (!THEMES || typeof THEMES !== "object") {
@@ -75,6 +89,7 @@
 
   let observer = null;
   let rafId = null;
+  let idleId = null;
   let currentThemeId = "default";
   let currentThemeVersion = "";
   let currentColors = null;
@@ -799,21 +814,58 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     el.dataset.xpVer = currentThemeVersion;
   }
 
+  function isInScanScope(el) {
+    return !!el.closest(SCAN_SCOPE_SELECTOR);
+  }
+
+  function findScopedRoots(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return [];
+    const roots = [];
+    if (node.matches(SCAN_SCOPE_SELECTOR)) roots.push(node);
+    node.querySelectorAll(SCAN_SCOPE_SELECTOR).forEach((root) => roots.push(root));
+    return roots;
+  }
+
   function addNodeToQueue(node, includeDescendants) {
     if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
 
-    nodeQueue.add(node);
+    if (includeDescendants) {
+      const scopedRoots = findScopedRoots(node);
+      if (scopedRoots.length === 0) {
+        if (isInScanScope(node)) nodeQueue.add(node);
+        return;
+      }
 
-    if (!includeDescendants) return;
+      for (const root of scopedRoots) {
+        nodeQueue.add(root);
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+        while (walker.nextNode()) {
+          nodeQueue.add(walker.currentNode);
+        }
+      }
+      return;
+    }
 
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT);
-    while (walker.nextNode()) {
-      nodeQueue.add(walker.currentNode);
+    if (isInScanScope(node)) {
+      nodeQueue.add(node);
     }
   }
 
   function scheduleFlush() {
-    if (rafId || !currentThemeVersion) return;
+    if (!currentThemeVersion || nodeQueue.size === 0) return;
+    if (rafId || idleId) return;
+
+    const requestIdle = globalThis.requestIdleCallback;
+    if (typeof requestIdle === "function") {
+      idleId = requestIdle(
+        (deadline) => {
+          idleId = null;
+          flushQueue(deadline);
+        },
+        { timeout: 80 }
+      );
+      return;
+    }
 
     rafId = requestAnimationFrame(() => {
       rafId = null;
@@ -821,17 +873,23 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
     });
   }
 
-  function flushQueue() {
+  function flushQueue(deadline) {
     if (!currentThemeVersion || nodeQueue.size === 0) return;
 
     const start = performance.now();
     let processed = 0;
+    const useIdleBudget = !!(deadline && typeof deadline.timeRemaining === "function");
 
     for (const el of nodeQueue) {
       nodeQueue.delete(el);
       processElement(el);
       processed += 1;
-      if (processed >= MAX_NODES_PER_FRAME) break;
+      if (useIdleBudget) {
+        if (processed >= MAX_NODES_PER_IDLE) break;
+        if (deadline.timeRemaining() < 1) break;
+      } else if (processed >= MAX_NODES_PER_FRAME) {
+        break;
+      }
     }
 
     if (DEBUG_PERF && processed > 0) {
@@ -866,6 +924,10 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
       cancelAnimationFrame(rafId);
       rafId = null;
     }
+    if (idleId && typeof cancelIdleCallback === "function") {
+      cancelIdleCallback(idleId);
+      idleId = null;
+    }
 
     nodeQueue.clear();
   }
@@ -883,7 +945,7 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
         }
 
         if (record.type === "attributes") {
-          if (record.attributeName === "style" && record.target && record.target.nodeType === Node.ELEMENT_NODE) {
+          if (record.target && record.target.nodeType === Node.ELEMENT_NODE) {
             delete record.target.dataset.xpVer;
           }
           addNodeToQueue(record.target, false);
@@ -897,19 +959,14 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["style"],
+      attributeFilter: ["style", "data-testid", "role"],
     });
   }
 
   function queueInitialScan() {
     if (!document.body) return;
 
-    addNodeToQueue(document.body, true);
-    const main = document.querySelector("main");
-    if (main) addNodeToQueue(main, true);
-
-    const layers = document.getElementById("layers");
-    if (layers) addNodeToQueue(layers, true);
+    document.querySelectorAll(SCAN_SCOPE_SELECTOR).forEach((root) => addNodeToQueue(root, true));
 
     scheduleFlush();
 
