@@ -357,11 +357,21 @@ div[data-testid="trend"]:hover,
 [role="menuitem"]:focus-visible,
 [role="option"]:hover,
 [role="option"]:focus-visible,
-nav[role="navigation"] a[role="link"]:hover,
-nav[role="navigation"] a[role="link"]:focus-visible,
 [role="button"]:hover:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]),
 [role="button"]:focus-visible:not([data-testid$="-follow"]):not([data-testid$="-unfollow"]) {
   background-color: var(--xp-interactive-hover) !important;
+}
+
+/* Sidebar nav: hover only compact icon/text group, not full row container */
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:hover,
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:focus-visible {
+  background-color: transparent !important;
+}
+
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:hover > div,
+[data-testid^="AppTabBar_"][data-testid$="_Link"]:focus-visible > div {
+  background-color: var(--xp-interactive-hover) !important;
+  border-radius: 9999px !important;
 }
 
 /* Avoid side-strip artifact from hovering the outer tweet wrapper */
