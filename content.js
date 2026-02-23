@@ -131,6 +131,8 @@
     const c = themeMeta.colors;
     const scheme = detectScheme(themeMeta, c);
     const hover = blendHex(c["--xp-bg-hover"], c["--xp-accent"], scheme === "light" ? 0.12 : 0.18) || c["--xp-bg-hover"];
+    const accentRgb = hexToRgbString(c["--xp-accent"]);
+    const onAccent = accentRgb && isLightColor(accentRgb) ? "#111111" : "#ffffff";
 
     return `
 :root {
@@ -140,6 +142,7 @@
   --xp-text: ${c["--xp-text"]};
   --xp-text-muted: ${c["--xp-text-muted"]};
   --xp-accent: ${c["--xp-accent"]};
+  --xp-on-accent: ${onAccent};
   --xp-interactive-hover: ${hover};
   --xp-scheme: ${scheme};
 }
@@ -408,6 +411,20 @@ div[role="tablist"] div[style*="border-bottom: 4px solid rgb(29, 155, 240)"] {
   border-top-color: var(--xp-border) !important;
   border-left-color: var(--xp-border) !important;
   border-right-color: var(--xp-border) !important;
+}
+
+/* Keep primary Post CTAs on accent even if scanner classifies them */
+[data-testid="SideNav_NewTweet_Button"],
+[data-testid="SideNav_NewTweet_Button"].xp-bg-main,
+[data-testid="tweetButtonInline"],
+[data-testid="tweetButtonInline"].xp-bg-main {
+  background-color: var(--xp-accent) !important;
+  border-color: var(--xp-accent) !important;
+}
+
+[data-testid="SideNav_NewTweet_Button"] *,
+[data-testid="tweetButtonInline"] * {
+  color: var(--xp-on-accent) !important;
 }
 `;
   }
